@@ -1,11 +1,4 @@
 import express from "express";
-declare global {
-  namespace Express {
-    interface Request {
-      user: any;
-    }
-  }
-}
 import path from "path";
 import fs from "fs";
 import * as vite from "vite";
@@ -393,7 +386,7 @@ function getUserData(db: any, userId: string) {
       tasks: [],
       habits: [],
       goals: [],
-      expenses: [],moods: [],
+      expenses: [],
       budgets: defaults.budgets,
       chatHistory: [
         {
@@ -1412,76 +1405,3 @@ async function startServer() {
 }
 
 startServer();
-
-// =========================
-// MOOD TRACKER
-// =========================
-
-app.post("/api/mood", authenticateToken, (req, res)=>{
-
-const {mood,note}=req.body;
-
-const db=readDB();
-
-const userData=getUserData(
-db,
-req.user.id
-);
-
-
-if(!userData.moods){
-userData.moods=[];
-}
-
-
-const entry={
-id:Date.now().toString(),
-mood,
-note:note || "",
-createdAt:new Date().toISOString()
-};
-
-
-userData.moods.push(entry);
-
-writeDB(db);
-
-
-res.json({
-success:true,
-mood:entry
-});
-
-});
-
-
-
-app.get("/api/mood/today", authenticateToken,(req,res)=>{
-
-const db=readDB();
-
-const userData=getUserData(
-db,
-req.user.id
-);
-
-
-const today=
-new Date()
-.toISOString()
-.slice(0,10);
-
-
-const mood=
-userData.moods?.find(
-(m:any)=>
-m.createdAt.startsWith(today)
-);
-
-
-res.json(mood || null);
-
-});
-
-
-

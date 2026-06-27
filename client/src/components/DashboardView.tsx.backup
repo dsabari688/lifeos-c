@@ -1,5 +1,4 @@
-﻿import React from "react";
-import MoodTracker from "./MoodTracker";
+import React from "react";
 import { CheckCircle2, Circle, Flame, Target, Sparkles, Plus, Play, Calendar, UserCheck, MessageSquare } from "lucide-react";
 import { Task, Habit, FullOSData, TaskPriority } from "../types";
 
@@ -511,8 +510,3 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     </div>
   );
 };
-
-
-
-
-
