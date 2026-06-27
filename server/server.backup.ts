@@ -614,44 +614,7 @@ app.delete("/api/goals/:id", authenticateToken, (req: any, res: any) => {
   writeDB(db);
   res.json({ success: true });
 });
-// Focus score system
 
-app.post("/api/focus-score", authenticateToken, (req:any,res:any)=>{
-
-  const {
-    durationMinutes = 25,
-    completedTasks = 0,
-    distractions = 0
-  } = req.body;
-
-
-  const score = Math.min(
-    100,
-    Math.max(
-      0,
-      (durationMinutes * 2)
-      + (completedTasks * 10)
-      - distractions
-    )
-  );
-
-
-  res.json({
-    score,
-    durationMinutes,
-    createdAt:new Date()
-  });
-
-});
-
-
-app.get("/api/focus-score/history", authenticateToken,(req:any,res:any)=>{
-
-  res.json({
-    history:[]
-  });
-
-});
 // --- TASKS API MODULE ---
 
 // Create task

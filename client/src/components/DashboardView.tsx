@@ -111,6 +111,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6">
+      
+      <MoodTracker />
+
       {/* Morning daily brief popup */}
       {showMorningBrief && morningBriefText && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">

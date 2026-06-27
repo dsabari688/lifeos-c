@@ -1,8 +1,9 @@
 ﻿import React, { useState, useEffect } from "react";
+import FocusScoreCard from "./FocusScoreCard";
 import { Play, Pause, RotateCcw, Clock, ShieldCheck, Flame, Bell, VolumeX, Volume2, HelpCircle } from "lucide-react";
 
 interface FocusModeViewProps {
-  defaultTaskTitle?: string;
+  defaultTaskTitle?: string
 }
 
 export const FocusModeView: React.FC<FocusModeViewProps> = ({
@@ -10,6 +11,7 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
 }) => {
   const [selectedDuration, setSelectedDuration] = useState<number>(25); // minutes
   const [timeRemaining, setTimeRemaining] = useState<number>(25 * 60); // seconds
+  const [focusScore, setFocusScore] = useState(0);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [completedSessions, setCompletedSessions] = useState<number>(2);
   const [alertBanner, setAlertBanner] = useState<string | null>(null);
@@ -77,6 +79,28 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
       setCompletedSessions((prev) => prev + 1);
       setTimeRemaining(selectedDuration * 60);
       setAlertBanner("Deep Work Block Complete! Continuous focus successfully logged. Take a 5-minute breather.");
+      if (localStorage.getItem("token")) {
+
+fetch("/api/focus-score", {
+  method:"POST",
+  headers:{
+    "Content-Type":"application/json",
+    "Authorization":`Bearer ${localStorage.getItem("token")}`
+  },
+  body:JSON.stringify({
+    durationMinutes:selectedDuration,
+    completedTasks:0,
+    distractions:0
+  })
+})
+.then(res=>res.json())
+.then(data=>{
+  console.log("Focus Score:", data.score);
+  setFocusScore(data.score);
+})
+.catch(err=>console.error(err));
+
+}
       playCompletedChime();
     }
     return () => {
@@ -236,6 +260,7 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
           </button>
         )}
       </div>
+      <FocusScoreCard score={focusScore}/>
 
       {/* Focus Stats Cards Grid */}
       <div className="grid grid-cols-3 gap-4 w-full pt-6 border-t border-slate-50 z-10">
@@ -256,7 +281,6 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
           <span className="font-display font-black text-emerald-600 text-[11px] block mt-1 uppercase">Sovereign Focus</span>
         </div>
       </div>
-
     </div>
   );
 };

@@ -1,20 +1,47 @@
-﻿
-import React, { useEffect, useState } from "react";
-import { Search, Plus, Trash2, Calendar, Edit3, CheckCircle, ChevronDown, Repeat, Clock } from "lucide-react";
-import { Task, TaskPriority } from "../types";
-import {
+﻿import {
   DndContext,
   DragEndEvent,
 } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
-
 import {
   SortableContext,
   verticalListSortingStrategy,
   useSortable,
 } from "@dnd-kit/sortable";
-
 import { CSS } from "@dnd-kit/utilities";
+const SortableTask = ({task, children}:any)=>{
+
+const {
+ attributes,
+ listeners,
+ setNodeRef,
+ transform,
+ transition
+}=useSortable({
+ id:task.id
+});
+
+
+const style={
+ transform:CSS.Transform.toString(transform),
+ transition
+};
+
+
+return (
+<div
+ ref={setNodeRef}
+ style={style}
+ {...attributes}
+ {...listeners}
+>
+{children}
+</div>
+)
+
+}
+import React, { useState } from "react";
+import { Search, Plus, Trash2, Calendar, Edit3, CheckCircle, ChevronDown, Repeat, Clock } from "lucide-react";
+import { Task, TaskPriority } from "../types";
 
 interface MissionsViewProps {
   tasks: Task[];
@@ -25,36 +52,6 @@ interface MissionsViewProps {
   onRescheduleTaskSubmit: (taskId: string, date: string) => void;
   selectedTaskId?: string | null;
   onFocusTask?: (id: string, title: string) => void;
-}
-
-const SortableTask = ({ task, children }: any) => {
-
- const {
- attributes,
- listeners,
- setNodeRef,
- transform,
- transition
- } = useSortable({
- id: task.id
- });
-
- const style = {
- transform: CSS.Transform.toString(transform),
- transition
- };
-
- return (
- <div
- ref={setNodeRef}
- style={style}
- {...attributes}
- {...listeners}
- >
- {children}
- </div>
- )
-
 }
 
 type FilterTab = "all" | "pending" | "completed" | "rescheduled" | "recurring";
@@ -73,24 +70,9 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [rescheduleInputMap, setRescheduleInputMap] = useState<Record<string, string>>({});
   const [showRescheduleFormMap, setShowRescheduleFormMap] = useState<Record<string, boolean>>({});
-  const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
 
-  useEffect(() => {
-    setLocalTasks(tasks);
-  }, [tasks]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = localTasks.findIndex((task) => task.id === active.id);
-    const newIndex = localTasks.findIndex((task) => task.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    setLocalTasks((prevTasks) => arrayMove(prevTasks, oldIndex, newIndex));
-  };
   // Filter tasks
-  const filteredTasks = localTasks.filter((t) => {
+  const filteredTasks = tasks.filter((t) => {
     // 1. Search term match
     const titleMatch = t.title.toLowerCase().includes(searchTerm.toLowerCase());
     if (!titleMatch) return false;
@@ -163,20 +145,14 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
         ))}
       </div>
 
-        {/* Tasks Cards Grid/Stack */}
-
-     <DndContext onDragEnd={handleDragEnd}>
-        <SortableContext
-          items={filteredTasks.map((task) => task.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="space-y-4">
-            {filteredTasks.length === 0 ? (
-              <div className="p-12 text-center bg-white rounded-2xl border border-slate-100 text-slate-400 text-sm">
-                No concurrent mission metrics found under candidate variables.
-              </div>
-            ) : (
-              filteredTasks.map((task) => {
+      {/* Tasks Cards Grid/Stack */}
+      <div className="space-y-4">
+        {filteredTasks.length === 0 ? (
+          <div className="p-12 text-center bg-white rounded-2xl border border-slate-100 text-slate-400 text-sm">
+            No concurrent mission metrics found under candidate variables.
+          </div>
+        ) : (
+          filteredTasks.map((task) => {
             const isCompleted = task.status === "completed";
             const isCritical = task.category === "urgent-important";
             const isImportant = task.category === "important-not-urgent";
@@ -199,8 +175,8 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
             const isSelected = selectedTaskId === task.id;
 
             return (
-              <SortableTask task={task} key={task.id}>
               <div
+                key={task.id}
                 onClick={() => onFocusTask?.(task.id, task.title)}
                 className={`bg-white rounded-2xl border transition-all p-5 shadow-xs cursor-pointer ${
                   isSelected 
@@ -338,29 +314,20 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
                     </button>
                   </div>
                 )}
-                          </div>
-              </SortableTask>
+              </div>
             );
           })
         )}
-              
       </div>
-</SortableContext>
 
-</DndContext>
-      {/* Floating Action Button */}
-
-
-    
-
-
+      {/* Floating Action Button (FAB) (Fixed right lower bottom aspect) */}
       <button
         onClick={onOpenCreateModal}
         className="fixed bottom-6 right-6 w-14 h-14 bg-amber-500 hover:bg-amber-600 text-white rounded-full flex items-center justify-center p-0 cursor-pointer shadow-lg hover:shadow-xl active:scale-[0.98] transition-all z-29"
         title="Formulate New Task Module"
       >
-      <Plus className="w-6 h-6 stroke-3" />
-    </button>
-  </div>
-);
+        <Plus className="w-6 h-6 stroke-3" />
+      </button>
+    </div>
+  );
 };
