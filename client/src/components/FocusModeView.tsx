@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Play, Pause, RotateCcw, Clock, ShieldCheck, Flame, Bell, VolumeX, Volume2, HelpCircle } from "lucide-react";
 
 interface FocusModeViewProps {
@@ -260,3 +260,4 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
     </div>
   );
 };
+
