@@ -1,0 +1,205 @@
+import React, { useState, useEffect } from "react";
+import { X, Calendar, Clock, AlertCircle } from "lucide-react";
+import { Task, TaskPriority } from "../types";
+
+interface TaskModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (taskData: {
+    title: string;
+    category: TaskPriority;
+    date: string;
+    time: string;
+    recurType: 'none' | 'daily' | 'weekly';
+  }) => void;
+  initialTask?: Task | null;
+}
+
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string; activeClass: string; borderClass: string }[] = [
+  { value: "urgent-important", label: "Urgent + Important", activeClass: "bg-red-500 text-white", borderClass: "border-red-500" },
+  { value: "important-not-urgent", label: "Important (Not Urgent)", activeClass: "bg-amber-500 text-white", borderClass: "border-amber-500" },
+  { value: "urgent-not-important", label: "Urgent (Not Important)", activeClass: "bg-purple-500 text-white", borderClass: "border-purple-500" },
+  { value: "not-urgent-not-important", label: "Not Urgent / Low", activeClass: "bg-emerald-500 text-white", borderClass: "border-emerald-500" }
+];
+
+export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, initialTask }) => {
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<TaskPriority>("important-not-urgent");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("09:00");
+  const [recurType, setRecurType] = useState<'none' | 'daily' | 'weekly'>("none");
+
+  useEffect(() => {
+    if (initialTask) {
+      setTitle(initialTask.title);
+      setCategory(initialTask.category);
+      setDate(initialTask.date);
+      setTime(initialTask.time);
+      setRecurType(initialTask.recurType);
+    } else {
+      setTitle("");
+      setCategory("important-not-urgent");
+      const todayString = new Date().toISOString().split("T")[0];
+      setDate(todayString);
+      setTime("09:00");
+      setRecurType("none");
+    }
+  }, [initialTask, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    onSave({
+      title: title.trim(),
+      category,
+      date,
+      time,
+      recurType
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h3 className="font-display text-lg font-semibold text-slate-900">
+            {initialTask ? "Modify Strategic Mission" : "Assign New Mission"}
+          </h3>
+          <button 
+            onClick={onClose} 
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Title */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 font-display">
+              Mission Title
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Architect Core Cache Sync Protocols"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 text-slate-800 text-sm font-sans"
+            />
+          </div>
+
+          {/* Eisenhower Matrix Segmented Priority Selection */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 font-display">
+              Eisenhower Strategy Priority
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {PRIORITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setCategory(opt.value)}
+                  className={`px-3 py-2.5 rounded-xl border text-xs font-semibold font-display text-left transition-all duration-150 flex items-center gap-2 ${
+                    category === opt.value
+                      ? `${opt.activeClass} border-transparent shadow-xs scale-[1.02]`
+                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${
+                    category === opt.value ? "bg-white" : 
+                    opt.value === "urgent-important" ? "bg-red-500" :
+                    opt.value === "important-not-urgent" ? "bg-amber-500" :
+                    opt.value === "urgent-not-important" ? "bg-purple-500" : "bg-emerald-500"
+                  }`} />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Date and Time Fields */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 font-display">
+                Execution Date
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                <input
+                  type="date"
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 text-slate-700 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 font-display">
+                Time Block
+              </label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                <input
+                  type="time"
+                  required
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 text-slate-700 text-xs font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Recurrence Selection */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 font-display">
+              Recurrence Cycle
+            </label>
+            <div className="flex gap-2">
+              {(["none", "daily", "weekly"] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRecurType(r)}
+                  className={`flex-1 py-1.5 rounded-lg border text-xs font-medium capitalize transition-all ${
+                    recurType === r
+                      ? "bg-amber-50 border-amber-500 text-amber-700 font-semibold"
+                      : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                  }`}
+                >
+                  {r === "none" ? "Single Mission" : r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer Action Buttons */}
+          <div className="flex gap-3 pt-3 border-t border-slate-100 font-display">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold shadow-xs hover:shadow-md transition-all active:scale-[0.98]"
+            >
+              {initialTask ? "Apply Modifications" : "Lock In Mission"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
