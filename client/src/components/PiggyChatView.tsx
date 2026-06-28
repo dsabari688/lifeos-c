@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Mic, Send, Minimize2, Sparkles, MessageSquare, Volume2, ShieldAlert } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Mic, Send, Sparkles, VolumeX, Volume2 } from "lucide-react";
 import { ChatMessage } from "../types";
 
 interface PiggyChatViewProps {
@@ -23,8 +23,18 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
   isLoading
 }) => {
   const [inputText, setInputText] = useState("");
-  const [piggyState, setPiggyState] = useState<"IDLE" | "LISTENING" | "THINKING" | "SPEAKING">("IDLE");
+  const [piggyState, setPiggyState] = useState<"IDLE" | "PASSIVE_LISTENING" | "LISTENING" | "THINKING" | "SPEAKING">("IDLE");
+  const [isWakeWordMode, setIsWakeWordMode] = useState(false);
+  const [micGranted, setMicGranted] = useState<boolean | null>(null);
+
+  const isWakeWordModeRef = useRef(false);
+  const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Use useCallback to stabilize the reference
+  const handleSendMessage = useCallback(async (text: string) => {
+    await onSendMessage(text);
+  }, [onSendMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -32,27 +42,27 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
 
   const speakText = (text: string) => {
     if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel(); // Mute ongoing audio first
+    window.speechSynthesis.cancel();
     
-    // Sanitize string content (remove action tags and markdown symbols)
     const cleanText = text.replace(/\[TRIGGER_ACTION:[^\]]+\]/g, "").replace(/[*#_`~]/g, "").trim();
-    
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "en-GB"; // Jarvis-like British voice accent
+    utterance.lang = "en-GB";
     
-    // Choose a premium voice
     const voices = window.speechSynthesis.getVoices();
     const premiumVoice = voices.find(v => v.lang.startsWith("en-GB") || v.name.toLowerCase().includes("google uk") || v.name.toLowerCase().includes("natural"));
     if (premiumVoice) utterance.voice = premiumVoice;
     
     utterance.onstart = () => setPiggyState("SPEAKING");
-    utterance.onend = () => setPiggyState("IDLE");
-    utterance.onerror = () => setPiggyState("IDLE");
+    utterance.onend = () => {
+      setPiggyState(isWakeWordModeRef.current ? "PASSIVE_LISTENING" : "IDLE");
+    };
+    utterance.onerror = () => {
+      setPiggyState(isWakeWordModeRef.current ? "PASSIVE_LISTENING" : "IDLE");
+    };
     
     window.speechSynthesis.speak(utterance);
   };
 
-  // Speak when chatbot assistant updates
   useEffect(() => {
     if (chatHistory.length > 0) {
       const lastMsg = chatHistory[chatHistory.length - 1];
@@ -71,7 +81,7 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
     const textToSend = inputText.trim();
     setInputText("");
     
-    await onSendMessage(textToSend);
+    await handleSendMessage(textToSend);
   };
 
   const handleChipClick = async (chip: string) => {
@@ -87,96 +97,139 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
     if (chip === "Week Performance") formulation = "Calculate my aggregate task completion rates.";
 
     setPiggyState("THINKING");
-    await onSendMessage(formulation);
+    await handleSendMessage(formulation);
   };
 
-  const [micGranted, setMicGranted] = useState<boolean | null>(null);
-
-  // Check initial browser mic parameters if available
   useEffect(() => {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    // Safely check for the method using the 'in' operator to satisfy TypeScript
+    if (navigator.mediaDevices && 'getUserMedia' in navigator.mediaDevices) {
       navigator.permissions?.query({ name: "microphone" as any }).then((permissionStatus) => {
         setMicGranted(permissionStatus.state === "granted");
         permissionStatus.onchange = () => {
           setMicGranted(permissionStatus.state === "granted");
         };
-      }).catch(() => {
-        // Safe query fail fallback
-      });
+      }).catch(() => {});
     }
     
-    // Force load speech voices list
     if (window.speechSynthesis) {
       window.speechSynthesis.getVoices();
     }
   }, []);
 
-  const startVoiceCaptureMode = () => {
+  const startListening = (continuous: boolean) => {
+    if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech Recognition API is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = continuous;
+    recognition.interimResults = continuous;
+    recognition.lang = "en-US";
+
+    recognition.onresult = async (event: any) => {
+      let finalTranscript = "";
+      let interimTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+        else interimTranscript += event.results[i][0].transcript;
+      }
+
+      const text = (finalTranscript || interimTranscript).toLowerCase();
+
+      if (continuous) {
+        if (text.includes("piggy")) {
+          setPiggyState("LISTENING");
+          const parts = text.split("piggy");
+          const command = parts[parts.length - 1].trim();
+          
+          if (finalTranscript && command.length > 2) {
+            recognition.stop();
+            setPiggyState("THINKING");
+            await handleSendMessage(command);
+          }
+        }
+      } else {
+        if (finalTranscript) {
+          recognition.stop();
+          setPiggyState("THINKING");
+          await handleSendMessage(finalTranscript);
+        }
+      }
+    };
+
+    recognition.onend = () => {
+      if (continuous && isWakeWordModeRef.current) {
+        try { recognition.start(); } catch (e) {}
+      } else if (!continuous) {
+        setPiggyState(isWakeWordModeRef.current ? "PASSIVE_LISTENING" : "IDLE");
+      }
+    };
+
+    recognition.onerror = (err: any) => {
+      if (err.error === 'not-allowed') setMicGranted(false);
+      // Restart on network errors if continuous
+      if (continuous && isWakeWordModeRef.current && err.error !== 'not-allowed') {
+         setTimeout(() => {
+             try { recognition.start(); } catch (e) {}
+         }, 1000);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    try { recognition.start(); } catch (e) {}
+  };
+
+  const toggleWakeWordMode = async () => {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
-    setPiggyState("LISTENING");
-    setTimeout(() => {
-      setPiggyState("THINKING");
-      const simulatedVoiceQueries = [
-        "Plan tomorrow's work schedule with 3 hours focus.",
-        "How much of my Entertainment budget remains, Piggy?",
-        "Toggle completion for coding study for today.",
-      ];
-      const randomQuery = simulatedVoiceQueries[Math.floor(Math.random() * simulatedVoiceQueries.length)];
-      
-      setTimeout(async () => {
-        await onSendMessage(randomQuery);
-      }, 1000);
-    }, 3000);
+    
+    if (isWakeWordModeRef.current) {
+      isWakeWordModeRef.current = false;
+      setIsWakeWordMode(false);
+      if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch(e) {}
+      }
+      setPiggyState("IDLE");
+      return;
+    }
+
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicGranted(true);
+      isWakeWordModeRef.current = true;
+      setIsWakeWordMode(true);
+      setPiggyState("PASSIVE_LISTENING");
+      startListening(true);
+    } catch (err) {
+      setMicGranted(false);
+    }
   };
 
   const requestMicAndStart = async () => {
     if (piggyState === "SPEAKING") {
       if (window.speechSynthesis) window.speechSynthesis.cancel();
-      setPiggyState("IDLE");
+      setPiggyState(isWakeWordModeRef.current ? "PASSIVE_LISTENING" : "IDLE");
       return;
     }
-
     if (isLoading) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      await navigator.mediaDevices.getUserMedia({ audio: true });
       setMicGranted(true);
-      stream.getTracks().forEach(track => track.stop());
-      
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = "en-US";
-        
-        setPiggyState("LISTENING");
-        
-        recognition.onresult = async (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setPiggyState("THINKING");
-          await onSendMessage(transcript);
-        };
-        
-        recognition.onerror = (err: any) => {
-          console.warn("Speech API captured anomaly error:", err);
-          startVoiceCaptureMode();
-        };
-        
-        recognition.onend = () => {
-          if (piggyState === "LISTENING") {
-            setPiggyState("IDLE");
-          }
-        };
-        
-        recognition.start();
-      } else {
-        startVoiceCaptureMode();
+      // Temporarily halt continuous listening to take a direct command
+      if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch(e) {}
       }
+      setPiggyState("LISTENING");
+      startListening(false);
     } catch (err) {
-      console.warn("Mic clearance denied by client operator:", err);
       setMicGranted(false);
-      startVoiceCaptureMode();
     }
   };
 
@@ -216,6 +269,8 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
             className={`w-28 h-28 rounded-full bg-radial p-0.5 flex items-center justify-center cursor-pointer hover:scale-[1.03] transition-all duration-300 ${
               piggyState === "LISTENING" 
                 ? "from-rose-400 to-rose-600 shadow-[0_0_45px_rgba(239,68,68,0.5)] animate-ping" 
+                : piggyState === "PASSIVE_LISTENING"
+                ? "from-blue-400 to-indigo-600 shadow-[0_0_35px_rgba(99,102,241,0.4)] animate-pulse"
                 : piggyState === "THINKING"
                 ? "from-amber-400 to-yellow-600 shadow-[0_0_40px_rgba(245,166,35,0.4)] animate-pulse"
                 : piggyState === "SPEAKING"
@@ -236,7 +291,7 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
 
         {/* Audio Frequency Equalizer Waves */}
         <div className="w-full flex justify-center gap-1 h-8 items-center">
-          {piggyState === "SPEAKING" || piggyState === "LISTENING" || isLoading ? (
+          {piggyState === "SPEAKING" || piggyState === "LISTENING" || piggyState === "PASSIVE_LISTENING" || isLoading ? (
             <>
               <div className="w-1 bg-amber-500 h-6 rounded-xs animate-jarvis-wave-1" />
               <div className="w-1 bg-amber-400 h-4 rounded-xs animate-jarvis-wave-2" />
@@ -253,10 +308,14 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
         <div className="w-full space-y-4 z-10">
           <div className="flex gap-3 w-full font-display">
             <button
-              onClick={startVoiceCaptureMode}
-              className="flex-1 py-2.5 border border-white/15 hover:bg-white/5 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              onClick={toggleWakeWordMode}
+              className={`flex-1 py-2.5 border text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+                isWakeWordMode 
+                  ? "bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,166,35,0.2)]" 
+                  : "border-white/15 hover:bg-white/5 text-white"
+              }`}
             >
-              Simulate Wake Word
+              {isWakeWordMode ? "Wake Word: ACTIVE" : "Enable Wake Word"}
             </button>
             <button
               onClick={requestMicAndStart}
@@ -278,7 +337,7 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
                 <button
                   key={chip}
                   onClick={() => handleChipClick(chip)}
-                  className="px-2 py-2 border border-white/5 bg-white/2 hover:border-amber-500/40 hover:bg-amber-500/5 text-left text-[10px] text-slate-300 hover:text-white rounded-lg transition-all truncate"
+                  className="px-2 py-2 border border-white/5 bg-white/2 hover:border-amber-500/40 hover:bg-amber-500/5 text-left text-[10px] text-slate-300 hover:text-white rounded-lg transition-all truncate cursor-pointer"
                 >
                   &rarr; {chip}
                 </button>

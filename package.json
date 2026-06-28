@@ -4,10 +4,10 @@
     "@types/node": "^26.0.1"
   },
   "dependencies": {
-    "@google/genai": "^2.10.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "openai": "^6.45.0",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "vite": "^8.1.0"

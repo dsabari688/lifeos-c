@@ -8,6 +8,8 @@ import {
 // Modular page imports
 import { DashboardView } from "./components/DashboardView";
 import { MissionsView } from "./components/MissionsView";
+import { TrackNetView } from "./components/TrackNetView";
+import { Scan } from "lucide-react";
 import { HabitsView } from "./components/HabitsView";
 import { GoalsView } from "./components/GoalsView";
 import { AnalyticsView } from "./components/AnalyticsView";
@@ -24,13 +26,13 @@ import { LoginView } from "./components/LoginView";
 // Redundant type models
 import { FullOSData, Task, Habit, ChatMessage, SystemNotification, TaskPriority } from "./types";
 
-type ViewState = "dashboard" | "missions" | "habits" | "goals" | "analytics" | "ai-core" | "focus-timer" | "settings";
-
+type ViewState = "dashboard" | "missions" | "habits" | "goals" | "analytics" | "ai-core" | "focus-timer" | "settings" | "tracknet";
 export default function App() {
   // Navigation & Frame layouts 
   const [activeView, setActiveView] = useState<ViewState>("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  
 
   // Splash Screen & Login Multi-stage indicators
   const [splashStep, setSplashStep] = useState(0);
@@ -560,8 +562,7 @@ export default function App() {
               <Menu className="w-4 h-4" />
             </button>
           </div>
-
-          {/* Nav List links */}
+{/* Nav List links */}
           <nav className="p-3 space-y-1 font-display">
             {[
               { key: "dashboard", label: "Mission Control", icon: LayoutDashboard },
@@ -588,7 +589,6 @@ export default function App() {
                   <IconComp className="w-4.5 h-4.5 shrink-0" />
                   {isSidebarOpen && <span className="truncate">{menu.label}</span>}
                   
-                  {/* Tooltip on collapsed state */}
                   {!isSidebarOpen && (
                     <span className="absolute left-14 scale-0 group-hover:scale-100 bg-slate-950 text-white text-[10px] font-mono px-2 py-1 rounded shadow-md z-50 whitespace-nowrap uppercase tracking-wider">
                       {menu.label}
@@ -597,6 +597,19 @@ export default function App() {
                 </button>
               );
             })}
+
+            {/* TrackNet Integration - Placed correctly outside the map loop */}
+            <button
+              onClick={() => setActiveView("tracknet")}
+              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-xs font-bold uppercase tracking-wider cursor-pointer ${
+                activeView === "tracknet" 
+                  ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" 
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+              }`}
+            >
+              <Scan className="w-4.5 h-4.5 shrink-0" />
+              {isSidebarOpen && <span className="truncate">TrackNet Cortex</span>}
+            </button>
           </nav>
         </div>
 
@@ -794,6 +807,17 @@ export default function App() {
               initialProfile={osData.profile}
               onSaveProfile={handleSaveProfile}
             />
+          )}
+          {activeView === "settings" && (
+            <SettingsView
+              initialProfile={osData.profile}
+              onSaveProfile={handleSaveProfile}
+            />
+          )}
+          
+          {/* PASTE THE TRACKNET BLOCK HERE */}
+          {activeView === "tracknet" && (
+            <TrackNetView />
           )}
         </main>
       </div>

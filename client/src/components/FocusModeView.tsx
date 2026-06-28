@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import FocusScoreCard from "./FocusScoreCard";
 import { Play, Pause, RotateCcw, Clock, ShieldCheck, Flame, Bell, VolumeX, Volume2, HelpCircle } from "lucide-react";
 
@@ -55,7 +55,7 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
 
   // Handle countdown interval and middle warnings
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     if (isRunning && timeRemaining > 0) {
       interval = setInterval(() => {
         setTimeRemaining((prev) => {
