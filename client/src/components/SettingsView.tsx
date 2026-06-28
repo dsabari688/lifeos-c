@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { User, Cpu, Bell, Shield, Palette, Check, Save } from "lucide-react";
 
 interface SettingsViewProps {
@@ -372,7 +372,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="space-y-6">
             <div>
               <h3 className="font-display font-black text-slate-800 text-base">Nudge Notifications</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Control telemetries delivered to Alex Mercer client nodes.</p>
+              <p className="text-xs text-slate-400 mt-0.5">Control telemetries delivered to {initialProfile.name} client nodes.</p>
             </div>
 
             <div className="space-y-4">

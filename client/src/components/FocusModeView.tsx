@@ -3,11 +3,13 @@ import FocusScoreCard from "./FocusScoreCard";
 import { Play, Pause, RotateCcw, Clock, ShieldCheck, Flame, Bell, VolumeX, Volume2, HelpCircle } from "lucide-react";
 
 interface FocusModeViewProps {
-  defaultTaskTitle?: string
+  defaultTaskTitle?: string;
+  token?: string | null;
 }
 
 export const FocusModeView: React.FC<FocusModeViewProps> = ({
-  defaultTaskTitle = "Refactor Application State Metrics & DB Handlers"
+  defaultTaskTitle = "Refactor Application State Metrics & DB Handlers",
+  token
 }) => {
   const [selectedDuration, setSelectedDuration] = useState<number>(25); // minutes
   const [timeRemaining, setTimeRemaining] = useState<number>(25 * 60); // seconds
@@ -79,28 +81,28 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
       setCompletedSessions((prev) => prev + 1);
       setTimeRemaining(selectedDuration * 60);
       setAlertBanner("Deep Work Block Complete! Continuous focus successfully logged. Take a 5-minute breather.");
-      if (localStorage.getItem("token")) {
+      if (token) {
 
-fetch("/api/focus-score", {
-  method:"POST",
-  headers:{
-    "Content-Type":"application/json",
-    "Authorization":`Bearer ${localStorage.getItem("token")}`
-  },
-  body:JSON.stringify({
-    durationMinutes:selectedDuration,
-    completedTasks:0,
-    distractions:0
-  })
-})
-.then(res=>res.json())
-.then(data=>{
-  console.log("Focus Score:", data.score);
-  setFocusScore(data.score);
-})
-.catch(err=>console.error(err));
+        fetch("/api/focus-score", {
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json",
+            "Authorization":`Bearer ${token}`
+          },
+          body:JSON.stringify({
+            durationMinutes:selectedDuration,
+            completedTasks:0,
+            distractions:0
+          })
+        })
+        .then(res=>res.json())
+        .then(data=>{
+          console.log("Focus Score:", data.score);
+          setFocusScore(data.score);
+        })
+        .catch(err=>console.error(err));
 
-}
+      }
       playCompletedChime();
     }
     return () => {

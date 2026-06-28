@@ -5,7 +5,7 @@ import { Habit } from "../types";
 interface HabitsViewProps {
   habits: Habit[];
   onToggleHabit: (habitId: string) => void;
-  onAddHabit: (name: string, frequency: "daily" | "weekly") => void;
+  onAddHabit: (name: string, frequency: "daily" | "weekly", icon?: string) => void;
   onDeleteHabit: (habitId: string) => void;
   selectedHabitId?: string | null;
   onFocusHabit?: (id: string, name: string) => void;
@@ -21,16 +21,20 @@ export const HabitsView: React.FC<HabitsViewProps> = ({
 }) => {
   const [newHabitName, setNewHabitName] = useState("");
   const [newHabitFreq, setNewHabitFreq] = useState<"daily" | "weekly">("daily");
+  const [selectedIcon, setSelectedIcon] = useState("💻");
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // June 2026 has 30 days. Starts on Monday, June 1, 2026.
-  // Today's date is Sunday, June 21, 2026.
-  const GRID_DAYS = Array.from({ length: 30 }, (_, i) => i + 1);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const monthName = now.toLocaleString("default", { month: "long" });
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const GRID_DAYS = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHabitName.trim()) return;
-    onAddHabit(newHabitName.trim(), newHabitFreq);
+    onAddHabit(newHabitName.trim(), newHabitFreq, selectedIcon);
     setNewHabitName("");
     setShowAddForm(false);
   };
@@ -100,6 +104,33 @@ export const HabitsView: React.FC<HabitsViewProps> = ({
             </select>
           </div>
 
+          {/* Emoji Picker Row */}
+          <div className="w-full md:w-auto space-y-2">
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">Icon Emoji</label>
+            <div className="flex gap-1.5 flex-wrap items-center">
+              {["💻", "🧘", "📚", "💰", "🏋️", "🍎", "💧", "🧠", "🏃"].map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setSelectedIcon(emoji)}
+                  className={`w-8 h-8 rounded-lg border text-sm flex items-center justify-center transition-all cursor-pointer ${
+                    selectedIcon === emoji ? "border-amber-500 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+              <input
+                type="text"
+                placeholder="Custom"
+                value={selectedIcon}
+                onChange={(e) => setSelectedIcon(e.target.value)}
+                className="w-12 px-1.5 py-1 text-center bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-amber-500 font-mono"
+                maxLength={2}
+              />
+            </div>
+          </div>
+
           <div className="flex gap-2 w-full md:w-auto font-display">
             <button
               type="button"
@@ -122,7 +153,7 @@ export const HabitsView: React.FC<HabitsViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {habits.map((item) => {
           const isDoneToday = item.logs.includes(todayStr);
-          const iconEmoji = getHabitIcon(item.name);
+          const iconEmoji = item.icon || getHabitIcon(item.name);
           
           // Custom color weight indicators based on streaks
           let progressPercent = Math.min(Math.round((item.logs.length / 15) * 100), 100);
@@ -221,7 +252,7 @@ export const HabitsView: React.FC<HabitsViewProps> = ({
       <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6">
         <div className="flex items-center gap-2 border-b border-slate-50 pb-4 mb-4">
           <Trophy className="w-4.5 h-4.5 text-amber-500" />
-          <h3 className="font-display font-bold text-slate-800 text-sm">Monthly Consistency Ledger (June 2026)</h3>
+          <h3 className="font-display font-bold text-slate-800 text-sm">Monthly Consistency Ledger ({monthName} {year})</h3>
         </div>
 
         {/* Legend */}
@@ -252,16 +283,17 @@ export const HabitsView: React.FC<HabitsViewProps> = ({
 
         <div className="grid grid-cols-7 gap-2">
           {GRID_DAYS.map((day) => {
-            const dateStr = `2026-06-${day.toString().padStart(2, "0")}`;
+            const dateStr = `${year}-${(month + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
             const targetDate = new Date(dateStr);
-            const todayDate = new Date("2026-06-21"); // June 21, 2026 is today in project
-            const isToday = day === 21;
+            const todayStr = now.toISOString().split("T")[0];
+            const todayDate = new Date(todayStr);
+            const isToday = todayStr === dateStr;
             
             let bgClass = "bg-slate-100";
             if (targetDate > todayDate) {
               bgClass = "bg-slate-50/50 text-slate-300 border border-dashed border-slate-150"; // Future
             } else if (habits.length === 0) {
-              bgClass = "bg-rose-450 text-white"; // Missed
+              bgClass = "bg-rose-400 text-white"; // Missed
             } else {
               const completedCount = habits.filter(h => h.logs?.includes(dateStr)).length;
               if (completedCount === 0) {

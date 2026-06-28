@@ -1,5 +1,6 @@
-﻿import React from "react";
+import React from "react";
 import MoodTracker from "./MoodTracker";
+import { SleepTracker } from "./SleepTracker";
 import { CheckCircle2, Circle, Flame, Target, Sparkles, Plus, Play, Calendar, UserCheck, MessageSquare } from "lucide-react";
 import { Task, Habit, FullOSData, TaskPriority } from "../types";
 
@@ -16,6 +17,8 @@ interface DashboardViewProps {
   selectedTaskId?: string | null;
   onFocusTask?: (id: string, title: string) => void;
   token?: string | null;
+  onNudgeTriggered?: () => void;
+  onTriggerWeeklyReview?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -30,7 +33,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onTriggerDailyReview,
   selectedTaskId,
   onFocusTask,
-  token
+  token,
+  onNudgeTriggered,
+  onTriggerWeeklyReview
 }) => {
   const { tasks, habits, expenses, profile, chatHistory } = data;
 
@@ -65,6 +70,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         }
       })
       .catch(err => console.error("Error fetching morning brief:", err));
+
+    // Proactively trigger habit nudges on load
+    fetch("/api/jarvis/trigger-nudge", { method: "POST", headers })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && onNudgeTriggered) {
+          onNudgeTriggered();
+        }
+      })
+      .catch(err => console.error("Error triggering nudges:", err));
   }, [token]);
 
   // Calculate stats
@@ -109,10 +124,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     { label: "Talk to Piggy", icon: MessageSquare, color: "hover:border-blue-500 hover:bg-blue-50/30", onClick: () => onNavigateToView("ai-core") }
   ];
 
+  // Show sleep tracker after 8 PM (20:00) or before 8 AM (08:00)
+  const currentHour = new Date().getHours();
+  const showSleepTracker = currentHour >= 20 || currentHour < 8;
+
   return (
     <div className="space-y-6">
       
-      <MoodTracker />
+      <MoodTracker token={token} />
+
+      {showSleepTracker && token && (
+        <SleepTracker token={token} onNudgeTriggered={onNudgeTriggered} />
+      )}
 
       {/* Morning daily brief popup */}
       {showMorningBrief && morningBriefText && (
@@ -505,6 +528,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               <UserCheck className="w-3.5 h-3.5 text-amber-500" />
               Simulate Nightly Review
+            </button>
+
+            <button
+              onClick={onTriggerWeeklyReview}
+              className="w-full py-2 bg-slate-50 hover:bg-amber-50 border border-slate-150 text-slate-700 hover:text-amber-800 text-[11px] font-semibold rounded-xl text-center transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-display mt-2"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              Weekly Performance Review
             </button>
           </div>
 

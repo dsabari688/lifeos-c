@@ -7,13 +7,15 @@ interface NotificationDrawerProps {
   onClose: () => void;
   notifications: SystemNotification[];
   onClearRead: () => void;
+  userName?: string;
 }
 
 export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   isOpen,
   onClose,
   notifications,
-  onClearRead
+  onClearRead,
+  userName = "Alex"
 }) => {
   if (!isOpen) return null;
 
@@ -59,7 +61,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
               <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mb-2">
                 <Bell className="w-5 h-5" />
               </div>
-              <p className="text-xs font-medium text-slate-400 font-sans">No diagnostic telemetry available, Alex.</p>
+              <p className="text-xs font-medium text-slate-400 font-sans">No diagnostic telemetry available, {userName}.</p>
             </div>
           ) : (
             notifications.map((item) => {

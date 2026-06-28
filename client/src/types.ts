@@ -34,6 +34,7 @@ export interface Habit {
   streak: number;
   logs: string[]; // Array of YYYY-MM-DD completion dates
   skippedDaysCount: number;
+  icon?: string;
 }
 
 export interface Expense {

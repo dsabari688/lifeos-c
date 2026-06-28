@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { 
   Menu, X, Bell, User, LayoutDashboard, Calendar, RefreshCw, Target, 
   LineChart, Cpu, Clock, Settings, ShieldAlert, LogOut, CheckCircle, 
-  Terminal, Sparkles, LogIn, ChevronRight, Zap, Info
+  Terminal, Sparkles, LogIn, ChevronRight, Zap, Info, Wallet
 } from "lucide-react";
 
 // Modular page imports
@@ -16,17 +16,20 @@ import { AnalyticsView } from "./components/AnalyticsView";
 import { PiggyChatView } from "./components/PiggyChatView";
 import { FocusModeView } from "./components/FocusModeView";
 import { SettingsView } from "./components/SettingsView";
+import { ExpensesView } from "./components/ExpensesView";
 
 // Modal and sidebar drawer helpers
 import { TaskModal } from "./components/TaskModal";
 import { NotificationDrawer } from "./components/NotificationDrawer";
 import { DailyReviewModal } from "./components/DailyReviewModal";
+import { SmartPlannerModal } from "./components/SmartPlannerModal";
+import { WeeklyReviewModal } from "./components/WeeklyReviewModal";
 import { LoginView } from "./components/LoginView";
 
 // Redundant type models
 import { FullOSData, Task, Habit, ChatMessage, SystemNotification, TaskPriority } from "./types";
 
-type ViewState = "dashboard" | "missions" | "habits" | "goals" | "analytics" | "ai-core" | "focus-timer" | "settings" | "tracknet";
+type ViewState = "dashboard" | "missions" | "habits" | "goals" | "analytics" | "ai-core" | "focus-timer" | "settings" | "tracknet" | "expenses";
 export default function App() {
   // Navigation & Frame layouts 
   const [activeView, setActiveView] = useState<ViewState>("dashboard");
@@ -76,6 +79,13 @@ export default function App() {
 
   // Daily Review Dialog triggers
   const [isDailyReviewOpen, setIsDailyReviewOpen] = useState(false);
+
+  // Smart Planner states
+  const [plannerPlan, setPlannerPlan] = useState<any>(null);
+  const [isPlannerModalOpen, setIsPlannerModalOpen] = useState(false);
+
+  // Weekly Review states
+  const [isWeeklyReviewOpen, setIsWeeklyReviewOpen] = useState(false);
 
   // 1. Splash Screen sequence interval
   const splashMessages = [
@@ -130,6 +140,15 @@ export default function App() {
       hydrateSystemData();
     }
   }, [isLoggedIn, token]);
+
+  // 5-minute polling interval for system telemetry and warning notifications
+  useEffect(() => {
+    if (!token || !isLoggedIn) return;
+    const intervalId = setInterval(() => {
+      hydrateSystemData();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [token, isLoggedIn]);
 
   // Backbeat daemon monitoring clock parameters to trigger the Nightly Cognitive Review
   useEffect(() => {
@@ -289,13 +308,13 @@ export default function App() {
     }
   };
 
-  const handleAddHabit = async (name: string, frequency: "daily" | "weekly") => {
+  const handleAddHabit = async (name: string, frequency: "daily" | "weekly", icon?: string) => {
     setIsUpdatingDb(true);
     try {
       const res = await authenticatedFetch("/api/habits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, frequency })
+        body: JSON.stringify({ name, frequency, icon })
       });
       if (res.ok) {
         await hydrateSystemData();
@@ -430,6 +449,67 @@ export default function App() {
     }
   };
 
+  // Expenses handlers
+  const handleAddExpense = async (expenseData: {
+    amount: number;
+    category: string;
+    note: string;
+    date: string;
+    isImpulsive?: boolean;
+  }) => {
+    setIsUpdatingDb(true);
+    try {
+      const res = await authenticatedFetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(expenseData)
+      });
+      if (res.ok) {
+        await hydrateSystemData();
+      }
+    } catch (err) {
+      console.error("Add Expense Err:", err);
+    } finally {
+      setIsUpdatingDb(false);
+    }
+  };
+
+  const handleUpdateBudget = async (category: string, limit: number) => {
+    setIsUpdatingDb(true);
+    try {
+      const res = await authenticatedFetch("/api/budgets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, limit })
+      });
+      if (res.ok) {
+        await hydrateSystemData();
+      }
+    } catch (err) {
+      console.error("Update Budget Err:", err);
+    } finally {
+      setIsUpdatingDb(false);
+    }
+  };
+
+  const handleExplainExpense = async (expenseId: string, explanation: string) => {
+    setIsUpdatingDb(true);
+    try {
+      const res = await authenticatedFetch(`/api/expenses/${expenseId}/explain`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ explanation })
+      });
+      if (res.ok) {
+        await hydrateSystemData();
+      }
+    } catch (err) {
+      console.error("Explain Expense Err:", err);
+    } finally {
+      setIsUpdatingDb(false);
+    }
+  };
+
   // Plan tomorrow quick action simulation
   const handleSimulatePlanTomorrow = async () => {
     setIsUpdatingDb(true);
@@ -445,7 +525,13 @@ export default function App() {
         })
       });
       if (res.ok) {
-        alert("Plan Tomorrow synchronized, Sir! Check your J.A.R.V.I.S briefing details.");
+        const data = await res.json();
+        if (data.success && data.plan) {
+          setPlannerPlan(data.plan);
+          setIsPlannerModalOpen(true);
+        } else {
+          alert("Plan Tomorrow synchronized, Sir! Check your J.A.R.V.I.S briefing details.");
+        }
         await hydrateSystemData();
       }
     } catch (err) {
@@ -570,6 +656,7 @@ export default function App() {
               { key: "habits", label: "Habit Conformance", icon: RefreshCw },
               { key: "goals", label: "Strategic Vault", icon: Target },
               { key: "analytics", label: "Analytics Cockpit", icon: LineChart },
+              { key: "expenses", label: "Financial Cockpit", icon: Wallet },
               { key: "ai-core", label: "AI Core Hub", icon: Cpu },
               { key: "focus-timer", label: "Focus Chronometer", icon: Clock },
               { key: "settings", label: "Systems Settings", icon: Settings },
@@ -733,11 +820,13 @@ export default function App() {
                 setIsTaskModalOpen(true);
               }}
               onTriggerDailyReview={() => setIsDailyReviewOpen(true)}
+              onTriggerWeeklyReview={() => setIsWeeklyReviewOpen(true)}
               selectedTaskId={selectedTaskId}
               onFocusTask={(id, title) => {
                 setSelectedTaskId(id);
                 setSelectedTaskTitle(title);
               }}
+              onNudgeTriggered={hydrateSystemData}
             />
           )}
 
@@ -799,7 +888,7 @@ export default function App() {
           )}
 
           {activeView === "focus-timer" && (
-            <FocusModeView defaultTaskTitle={selectedTaskTitle || undefined} />
+            <FocusModeView defaultTaskTitle={selectedTaskTitle || undefined} token={token} />
           )}
 
           {activeView === "settings" && (
@@ -808,10 +897,14 @@ export default function App() {
               onSaveProfile={handleSaveProfile}
             />
           )}
-          {activeView === "settings" && (
-            <SettingsView
-              initialProfile={osData.profile}
-              onSaveProfile={handleSaveProfile}
+          {activeView === "expenses" && (
+            <ExpensesView
+              expenses={osData.expenses || []}
+              budgets={osData.budgets || []}
+              token={token}
+              onAddExpense={handleAddExpense}
+              onUpdateBudget={handleUpdateBudget}
+              onExplainExpense={handleExplainExpense}
             />
           )}
           
@@ -841,6 +934,7 @@ export default function App() {
         onClose={() => setNotificationsOpen(false)}
         notifications={osData.notifications}
         onClearRead={handleClearNotifications}
+        userName={currentUser?.name}
       />
 
       {/* 3. Daily Night Review simulation modal */}
@@ -854,6 +948,20 @@ export default function App() {
         activeStreak={osData.habits.length > 0 ? Math.max(...osData.habits.map(h => h.streak)) : 0}
         productivityScore={realProductivityScore} // Consolidated Score matching cockpit index
         onPlanTomorrow={handleSimulatePlanTomorrow}
+      />
+
+      {/* 4. Smart Planner Result Modal */}
+      <SmartPlannerModal
+        isOpen={isPlannerModalOpen}
+        onClose={() => setIsPlannerModalOpen(false)}
+        plan={plannerPlan}
+      />
+
+      {/* 5. Weekly Review Modal */}
+      <WeeklyReviewModal
+        isOpen={isWeeklyReviewOpen}
+        onClose={() => setIsWeeklyReviewOpen(false)}
+        token={token}
       />
 
       {/* Persistent floating J.A.R.V.I.S cognitive companion orb */}

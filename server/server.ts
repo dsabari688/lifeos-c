@@ -9,6 +9,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken"; 
 import nodemailer from "nodemailer";
 import multer from "multer";
+import cron from "node-cron";
 
 declare global {
   namespace Express {
@@ -461,7 +462,8 @@ app.post("/api/habits", authenticateToken, (req: any, res: any) => {
     frequency: req.body.frequency || "daily",
     streak: 0,
     logs: [],
-    skippedDaysCount: 0
+    skippedDaysCount: 0,
+    icon: req.body.icon || ""
   };
   userData.habits.push(newHabit);
   writeDB(db);
@@ -924,9 +926,116 @@ app.get('/api/jarvis/morning-brief', authenticateToken, async (req: any, res: an
   const remaining = userData.profile.budgetLimit - spent;
   const budgetPercent = Math.round((spent / userData.profile.budgetLimit) * 100);
 
-  const briefText = `Good morning, ${req.user.name}. Today is ${dayName}, ${dateStr}. You have ${urgentTasks.length} urgent tasks on your deck. Your highest priority is "${topTask.title}". Your habit streak for "${longestStreakHabit.name}" is currently at ${longestStreakHabit.streak} days — let's keep it alive today. Your monthly budget is ${budgetPercent}% utilized, with $${remaining.toFixed(2)} remaining. Based on your behavioral patterns, your peak focus window starts at ${getPeakHours(userData.userPatterns).split(' ')[0]}. Shall we build your schedule for today?`;
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (!userData.sleepLogs) userData.sleepLogs = [];
+  const sleepLog = userData.sleepLogs.find((s: any) => s.date === todayStr);
+  const sleepText = sleepLog ? ` You logged ${sleepLog.duration} hours of sleep.` : "";
+
+  const briefText = `Good morning, ${req.user.name}. Today is ${dayName}, ${dateStr}.${sleepText} You have ${urgentTasks.length} urgent tasks on your deck. Your highest priority is "${topTask.title}". Your habit streak for "${longestStreakHabit.name}" is currently at ${longestStreakHabit.streak} days — let's keep it alive today. Your monthly budget is ${budgetPercent}% utilized, with $${remaining.toFixed(2)} remaining. Based on your behavioral patterns, your peak focus window starts at ${getPeakHours(userData.userPatterns).split(' ')[0]}. Shall we build your schedule for today?`;
 
   res.json({ briefText, generatedAt: new Date().toISOString() });
+});
+
+app.get('/api/analytics/weekly-review', authenticateToken, async (req: any, res: any) => {
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  
+  // Calculate past 7 days dates
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().split("T")[0]);
+  }
+
+  // Tasks completed in the past 7 days
+  const tasksCompleted = userData.tasks.filter((t: any) => t.status === "completed" && dates.includes(t.date)).length;
+  
+  // Tasks skipped (rescheduledCount > 0 and date in past 7 days)
+  const tasksSkipped = userData.tasks.filter((t: any) => t.rescheduledCount > 0 && dates.includes(t.date)).length;
+
+  // Habit consistency
+  let totalPossible = userData.habits.length * 7;
+  let totalDone = 0;
+  userData.habits.forEach((h: any) => {
+    h.logs.forEach((logDate: string) => {
+      if (dates.includes(logDate)) {
+        totalDone++;
+      }
+    });
+  });
+  const habitConsistency = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : 100;
+
+  // Best / worst habits
+  let bestHabit = "None";
+  let worstHabit = "None";
+  if (userData.habits.length > 0) {
+    const habitsStats = userData.habits.map((h: any) => {
+      const doneCount = h.logs.filter((logDate: string) => dates.includes(logDate)).length;
+      return { name: h.name, doneCount };
+    });
+    // Sort descending for best, ascending for worst
+    habitsStats.sort((a: any, b: any) => b.doneCount - a.doneCount);
+    bestHabit = habitsStats[0].doneCount > 0 ? habitsStats[0].name : "None";
+    
+    // For worst habit, sort ascending
+    const habitsStatsAsc = [...habitsStats].sort((a: any, b: any) => a.doneCount - b.doneCount);
+    worstHabit = habitsStatsAsc[0].name;
+  }
+
+  // Money spent in the past 7 days
+  const moneySpent = userData.expenses
+    .filter((e: any) => dates.includes(e.date))
+    .reduce((sum: number, e: any) => sum + e.amount, 0);
+
+  // Budget status
+  const totalLimit = userData.budgets.reduce((sum: number, b: any) => sum + b.limit, 0);
+  const currentMonthStr = new Date().toISOString().substring(0, 7);
+  const totalMonthSpent = userData.expenses
+    .filter((e: any) => e.date.substring(0, 7) === currentMonthStr)
+    .reduce((sum: number, e: any) => sum + e.amount, 0);
+  const budgetStatus = totalMonthSpent > totalLimit ? "Over allowance limit" : `$${(totalLimit - totalMonthSpent).toFixed(2)} remaining allowance`;
+
+  // Goal progress
+  const goalProgress = (userData.goals || []).map((g: any) => ({
+    title: g.title,
+    progress: g.progress,
+    status: g.status
+  }));
+
+  // Piggy weekly insight via Groq
+  let piggyInsight = "Factual metrics compiled, Sir. Piggy notes satisfactory developmental conformance.";
+  try {
+    const prompt = `Analyze user ${req.user.name}'s weekly productivity and finance metrics:
+- Tasks completed: ${tasksCompleted}
+- Tasks skipped/rescheduled: ${tasksSkipped}
+- Habits consistency: ${habitConsistency}% (Best: "${bestHabit}", Worst: "${worstHabit}")
+- Money spent in past 7 days: $${moneySpent.toFixed(2)} (Monthly status: ${budgetStatus})
+Provide a concise, elegant, British butler style diagnostic analysis paragraph.
+Keep it strictly under 3 sentences. Do not use markdown format.`;
+
+    const ai = getOpenAI();
+    const response = await ai.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.6
+    });
+    piggyInsight = response.choices?.[0]?.message?.content || piggyInsight;
+  } catch (error: any) {
+    console.error("Weekly review insight AI error:", error.message);
+  }
+
+  res.json({
+    tasksCompleted,
+    tasksSkipped,
+    habitConsistency,
+    bestHabit,
+    worstHabit,
+    moneySpent,
+    budgetStatus,
+    goalProgress,
+    piggyInsight
+  });
 });
 
 // --- GROQ VISION RECEIPT SCANNER ---
@@ -1067,6 +1176,41 @@ async function startServer() {
   });
 }
 
+// Cron job to run at 9 PM (21:00) every day for daily habit completion checks
+cron.schedule("0 21 * * *", () => {
+  console.log("[LifeOS Cron] Running daily habit conformance checklist at 21:00...");
+  const db = readDB();
+  const todayStr = new Date().toISOString().split("T")[0];
+  let changes = false;
+
+  Object.keys(db.userData || {}).forEach((userId) => {
+    const userData = db.userData[userId];
+    if (userData && userData.habits) {
+      userData.habits.forEach((habit: any) => {
+        if (!habit.logs.includes(todayStr)) {
+          const notification = {
+            id: `nudge-${Date.now()}-${habit.id}`,
+            title: "⚠️ Streak Risk Warning",
+            message: `Sir, daily review time is approaching. Your habit '${habit.name}' is not yet completed today. Maintain your streak!`,
+            timestamp: new Date().toISOString(),
+            type: "warning" as const,
+            read: false
+          };
+          const alreadyNudged = userData.notifications.some((n: any) => n.id.includes(habit.id) && n.timestamp.startsWith(todayStr));
+          if (!alreadyNudged) {
+            userData.notifications.unshift(notification);
+            changes = true;
+          }
+        }
+      });
+    }
+  });
+
+  if (changes) {
+    writeDB(db);
+  }
+});
+
 startServer();
 
 // =========================
@@ -1098,4 +1242,35 @@ app.get("/api/mood/today", authenticateToken,(req,res)=>{
   const today=new Date().toISOString().slice(0,10);
   const mood=userData.moods?.find((m:any)=>m.createdAt.startsWith(today));
   res.json(mood || null);
+});
+
+// =========================
+// SLEEP TRACKER
+// =========================
+app.post("/api/sleep", authenticateToken, (req: any, res: any) => {
+  const { sleepTime, wakeTime, duration, date } = req.body;
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  
+  if (!userData.sleepLogs) userData.sleepLogs = [];
+  const index = userData.sleepLogs.findIndex((s: any) => s.date === date);
+  const entry = { sleepTime, wakeTime, duration: parseFloat(duration), date };
+  
+  if (index > -1) {
+    userData.sleepLogs[index] = entry;
+  } else {
+    userData.sleepLogs.push(entry);
+  }
+  
+  writeDB(db);
+  res.json({ success: true, sleepLog: entry });
+});
+
+app.get("/api/sleep/today", authenticateToken, (req: any, res: any) => {
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  const today = new Date().toISOString().split("T")[0];
+  if (!userData.sleepLogs) userData.sleepLogs = [];
+  const log = userData.sleepLogs.find((s: any) => s.date === today);
+  res.json(log || null);
 });

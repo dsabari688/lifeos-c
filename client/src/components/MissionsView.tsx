@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Search, Plus, Trash2, Calendar, Edit3, CheckCircle, ChevronDown, Repeat, Clock } from "lucide-react";
 import { Task, TaskPriority } from "../types";
 import {
@@ -78,11 +78,19 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = localTasks.findIndex((task) => task.id === active.id);
-    const newIndex = localTasks.findIndex((task) => task.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
+    const activeTask = localTasks.find((task) => task.id === active.id);
+    const targetTask = localTasks.find((task) => task.id === over.id);
+    if (!activeTask || !targetTask) return;
 
-    setLocalTasks((prevTasks) => arrayMove(prevTasks, oldIndex, newIndex));
+    if (activeTask.date !== targetTask.date) {
+      onRescheduleTaskSubmit(activeTask.id, targetTask.date);
+    } else {
+      const oldIndex = localTasks.findIndex((task) => task.id === active.id);
+      const newIndex = localTasks.findIndex((task) => task.id === over.id);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        setLocalTasks((prevTasks) => arrayMove(prevTasks, oldIndex, newIndex));
+      }
+    }
   };
 
   // Filter tasks
@@ -97,6 +105,30 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
 
     return true; 
   });
+
+  // Sort and group tasks by Date
+  const sortedFilteredTasks = [...filteredTasks].sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) return dateCompare;
+    
+    const aIsCritical = a.category === "urgent-important";
+    const bIsCritical = b.category === "urgent-important";
+    if (aIsCritical !== bIsCritical) {
+      return aIsCritical ? -1 : 1;
+    }
+    
+    return a.time.localeCompare(b.time);
+  });
+
+  const groupedTasks: Record<string, Task[]> = {};
+  sortedFilteredTasks.forEach((task) => {
+    if (!groupedTasks[task.date]) {
+      groupedTasks[task.date] = [];
+    }
+    groupedTasks[task.date].push(task);
+  });
+
+  const sortedDates = Object.keys(groupedTasks).sort((a, b) => a.localeCompare(b));
 
   const toggleRescheduleForm = (taskId: string, defaultDate: string) => {
     setShowRescheduleFormMap((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
@@ -331,48 +363,39 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
       {/* Tasks Cards Grid/Stack */}
       <DndContext onDragEnd={handleDragEnd}>
         <SortableContext
-          items={filteredTasks.map((task) => task.id)}
+          items={sortedFilteredTasks.map((task) => task.id)}
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-8">
-            {filteredTasks.length === 0 ? (
+            {sortedDates.length === 0 ? (
               <div className="p-12 text-center bg-white rounded-2xl border border-slate-100 text-slate-400 text-sm">
                 No concurrent mission metrics found under candidate variables.
               </div>
             ) : (
-              <>
-                {/* Mission Critical Section */}
-                {filteredTasks.filter((t) => t.category === "urgent-important").length > 0 && (
-                  <div>
-                    <h3 className="font-mono text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-4 px-2">
-                      // Mission Critical
+              sortedDates.map((dateStr) => {
+                const dateTasks = groupedTasks[dateStr];
+                let formattedDate = dateStr;
+                try {
+                  const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' };
+                  formattedDate = new Date(dateStr).toLocaleDateString('en-US', options);
+                } catch (e) {
+                  formattedDate = dateStr;
+                }
+
+                return (
+                  <div key={dateStr} className="space-y-4">
+                    <h3 className="font-mono text-[10px] font-bold text-amber-600 uppercase tracking-widest border-b border-slate-105 pb-2 px-2 flex justify-between items-center">
+                      <span>// {formattedDate}</span>
+                      <span className="text-[9px] text-slate-450 normal-case font-normal font-sans">
+                        {dateTasks.filter(t => t.status === "completed").length}/{dateTasks.length} Completed
+                      </span>
                     </h3>
                     <div className="space-y-4">
-                      {filteredTasks
-                        .filter((t) => t.category === "urgent-important")
-                        .map((task) => renderTaskCard(task, true))}
+                      {dateTasks.map((task) => renderTaskCard(task, task.category === "urgent-important"))}
                     </div>
                   </div>
-                )}
-
-                {/* Routine Operations Section */}
-                <div>
-                  <h3 className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">
-                    // Routine Operations
-                  </h3>
-                  <div className="space-y-4">
-                    {filteredTasks.filter((t) => t.category !== "urgent-important").length > 0 ? (
-                      filteredTasks
-                        .filter((t) => t.category !== "urgent-important")
-                        .map((task) => renderTaskCard(task, false))
-                    ) : (
-                      <p className="text-[10px] text-slate-300 italic px-2">
-                        Operational baseline stable.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </>
+                );
+              })
             )}
           </div>
         </SortableContext>
