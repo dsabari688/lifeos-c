@@ -6,10 +6,39 @@ const createViteServer = vite.createServer;
 import OpenAI from "openai";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken"; 
+import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import multer from "multer";
 import cron from "node-cron";
+import {
+  generateSeedData,
+  calculateHabitPatterns,
+  calculateHabitRisk,
+  calculateEnergyLevels,
+  calculateCorrelations,
+  calculateGoalPacing,
+  checkAchievements,
+  synthesizeAIDashboard,
+  getDaysBetween,
+  detectUpcomingDeadlines,
+  evaluateOutcomeMetrics
+} from "./piggyIntelligence.js";
+import { buildPiggyPrompt } from "./piggyPromptBuilder.js";
+import { formatPiggyResponse } from "./piggyFormatter.js";
+import { transitionWorkflowState } from "./piggyWorkflow.js";
+import { executeAgentGoal } from "./piggyExecutor.js";
+import { verifyResponse } from "./piggyVerifier.js";
+import { scoreConfidence } from "./piggyConfidence.js";
+import { runRetryLoop } from "./piggyRetry.js";
+import { generateAndSaveReflection } from "./piggyReflection.js";
+import { parseAndSaveMemoryUpdates } from "./piggyMemoryUpdater.js";
+import { autoTrackGoalProgress } from "./piggyGoalTracker.js";
+import { queryGroq } from "./piggyClient.js";
+import { runThinkingPipeline } from "./piggyThinking.js";
+import { startBackgroundAgent } from "./piggyBackground.js";
+import { initializeScheduler } from "./piggyScheduler.js";
+import { runAutonomousAgentLoop } from "./piggyAutonomy.js";
+
 
 declare global {
   namespace Express {
@@ -92,9 +121,9 @@ function getOpenAI(): OpenAI {
       throw new Error("GROQ_API_KEY environment variable is required");
     }
     // Point the OpenAI SDK to Groq's servers
-    openaiInstance = new OpenAI({ 
-        apiKey: apiKey,
-        baseURL: "https://api.groq.com/openai/v1"
+    openaiInstance = new OpenAI({
+      apiKey: apiKey,
+      baseURL: "https://api.groq.com/openai/v1"
     });
   }
   return openaiInstance;
@@ -144,7 +173,7 @@ const defaultData = () => ({
   },
   tasks: [],
   habits: [],
-  goals: [], 
+  goals: [],
   expenses: [],
   budgets: [
     { category: "food", limit: 300 },
@@ -200,6 +229,7 @@ function getUserData(db: any, userId: string) {
   if (!db.userData[userId]) {
     const defaults = defaultData();
     const userProfile = db.users?.find((u: any) => u.id === userId);
+    const seed = generateSeedData(userId);
     db.userData[userId] = {
       profile: {
         ...defaults.profile,
@@ -207,10 +237,17 @@ function getUserData(db: any, userId: string) {
         email: userProfile?.email || "",
         avatar: userProfile?.avatarUrl || ""
       },
-      tasks: [],
-      habits: [],
-      goals: [],
-      expenses: [], moods: [],
+      tasks: seed.tasks,
+      habits: seed.habits,
+      goals: seed.goals,
+      expenses: seed.expenses,
+      moods: seed.moods,
+      sleepLogs: seed.sleepLogs,
+      focusSessions: seed.focusSessions,
+      aiMemory: seed.aiMemory,
+      recommendationsFeedback: seed.recommendationsFeedback,
+      monthlySnapshots: seed.monthlySnapshots,
+      reflections: [],
       budgets: defaults.budgets,
       chatHistory: defaults.chatHistory,
       notifications: [],
@@ -225,6 +262,42 @@ function getUserData(db: any, userId: string) {
         goalProgressRate: 0.65
       }
     };
+  } else {
+    // Retroactively seed existing user if they lack the new features
+    const seed = generateSeedData(userId);
+    if (!db.userData[userId].focusSessions) {
+      db.userData[userId].focusSessions = seed.focusSessions;
+    }
+    if (!db.userData[userId].sleepLogs || db.userData[userId].sleepLogs.length === 0) {
+      db.userData[userId].sleepLogs = seed.sleepLogs;
+    }
+    if (!db.userData[userId].moods || db.userData[userId].moods.length === 0) {
+      db.userData[userId].moods = seed.moods;
+    }
+    if (!db.userData[userId].habits || db.userData[userId].habits.length === 0) {
+      db.userData[userId].habits = seed.habits;
+    }
+    if (!db.userData[userId].goals || db.userData[userId].goals.length === 0) {
+      db.userData[userId].goals = seed.goals;
+    }
+    if (!db.userData[userId].expenses || db.userData[userId].expenses.length === 0) {
+      db.userData[userId].expenses = seed.expenses;
+    }
+    if (!db.userData[userId].tasks || db.userData[userId].tasks.length === 0) {
+      db.userData[userId].tasks = seed.tasks;
+    }
+    if (!db.userData[userId].aiMemory || db.userData[userId].aiMemory.length === 0) {
+      db.userData[userId].aiMemory = seed.aiMemory;
+    }
+    if (!db.userData[userId].recommendationsFeedback || db.userData[userId].recommendationsFeedback.length === 0) {
+      db.userData[userId].recommendationsFeedback = seed.recommendationsFeedback;
+    }
+    if (!db.userData[userId].monthlySnapshots || db.userData[userId].monthlySnapshots.length === 0) {
+      db.userData[userId].monthlySnapshots = seed.monthlySnapshots;
+    }
+    if (!db.userData[userId].reflections) {
+      db.userData[userId].reflections = [];
+    }
   }
   return db.userData[userId];
 }
@@ -292,7 +365,7 @@ app.post('/api/auth/verify-otp', async (req: any, res: any) => {
 app.post('/api/auth/login', async (req: any, res: any) => {
   const { email, password } = req.body;
   const db = readDB();
-  
+
   if (!db.users) db.users = [];
   const user = db.users.find((u: any) => u.email === email);
 
@@ -371,14 +444,31 @@ app.delete("/api/goals/:id", authenticateToken, (req: any, res: any) => {
 });
 
 // Focus score system
-app.post("/api/focus-score", authenticateToken, (req:any,res:any)=>{
+app.post("/api/focus-score", authenticateToken, (req: any, res: any) => {
   const { durationMinutes = 25, completedTasks = 0, distractions = 0 } = req.body;
   const score = Math.min(100, Math.max(0, (durationMinutes * 2) + (completedTasks * 10) - distractions));
-  res.json({ score, durationMinutes, createdAt:new Date() });
+
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  if (!userData.focusSessions) userData.focusSessions = [];
+
+  const session = {
+    durationMinutes,
+    completedTasks,
+    distractions,
+    score,
+    timestamp: new Date().toISOString()
+  };
+  userData.focusSessions.push(session);
+  writeDB(db);
+
+  res.json({ score, durationMinutes, createdAt: new Date() });
 });
 
-app.get("/api/focus-score/history", authenticateToken,(req:any,res:any)=>{
-  res.json({ history:[] });
+app.get("/api/focus-score/history", authenticateToken, (req: any, res: any) => {
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  res.json({ history: userData.focusSessions || [] });
 });
 
 // --- TASKS API MODULE ---
@@ -421,7 +511,7 @@ app.put("/api/tasks/:id", authenticateToken, (req: any, res: any) => {
   if (newStatus === "skipped" || req.body.rescheduled) {
     const newDate = req.body.newDate;
     if (!newDate) return res.status(400).json({ error: "Reschedule date is required for skipped tasks." });
-    
+
     existingTask.originalDate = existingTask.originalDate || existingTask.date;
     existingTask.date = newDate;
     existingTask.status = "pending";
@@ -480,11 +570,16 @@ app.post("/api/habits/:id/toggle", authenticateToken, (req: any, res: any) => {
   const logIndex = habit.logs.indexOf(date);
   let completed = false;
 
+  if (!habit.logTimes) habit.logTimes = [];
+
   if (logIndex > -1) {
     habit.logs.splice(logIndex, 1);
+    const timePrefix = date;
+    habit.logTimes = habit.logTimes.filter((t: string) => !t.startsWith(timePrefix));
   } else {
     habit.logs.push(date);
     habit.logs.sort();
+    habit.logTimes.push(new Date().toISOString());
     completed = true;
   }
 
@@ -493,12 +588,12 @@ app.post("/api/habits/:id/toggle", authenticateToken, (req: any, res: any) => {
   if (sortedLogs.length > 0) {
     let currentStreak = 0;
     let expectedDate = new Date(sortedLogs[sortedLogs.length - 1]);
-    
+
     for (let i = sortedLogs.length - 1; i >= 0; i--) {
       const logDate = new Date(sortedLogs[i]);
       const diffTime = Math.abs(expectedDate.getTime() - logDate.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays <= 1) {
         currentStreak++;
         expectedDate = logDate;
@@ -541,7 +636,7 @@ app.post("/api/expenses", authenticateToken, (req: any, res: any) => {
   const userData = getUserData(db, req.user.id);
   const category = req.body.category || "misc";
   const amount = parseFloat(req.body.amount) || 0;
-  
+
   const newExpense = {
     id: `exp-${Date.now()}`,
     amount,
@@ -592,7 +687,7 @@ app.post("/api/expenses/:id/explain", authenticateToken, (req: any, res: any) =>
 
   expense.isImpulsive = true;
   expense.explanation = req.body.explanation || "No explanation provided.";
-  
+
   writeDB(db);
   res.json({ success: true, expense });
 });
@@ -640,89 +735,90 @@ app.post("/api/jarvis/chat", authenticateToken, async (req: any, res: any) => {
   const { message, activeContext } = req.body;
   if (!message) return res.status(400).json({ error: "Message is required." });
 
+  const startTime = Date.now();
   const db = readDB();
   const userData = getUserData(db, req.user.id);
-  
-  const taskSummary = userData.tasks.map((t: any) => `[Priority: ${t.category}, Title: ${t.title}, Date: ${t.date}, Status: ${t.status}, ID: ${t.id}, Rescheduled Count: ${t.rescheduledCount}]`).join("\n");
-  const habitSummary = userData.habits.map((h: any) => `[Habit: ${h.name}, Streak: ${h.streak} days, Completed Days: ${h.logs.length}, Skipped Days Count: ${h.skippedDaysCount}, ID: ${h.id}]`).join("\n");
-  
-  const spendByCategory: Record<string, number> = {};
-  userData.expenses.forEach((e: any) => {
-    spendByCategory[e.category] = (spendByCategory[e.category] || 0) + e.amount;
-  });
-  const financialSummary = userData.budgets.map((b: any) => {
-    const currentSpend = spendByCategory[b.category] || 0;
-    return `[Category: ${b.category}, Limit: $${b.limit}, CurrentSpend: $${currentSpend.toFixed(2)}]`;
-  }).join("\n");
 
-  const systemPrompt = `You are Piggy — an advanced AI life coordinator and discipline butler for the user ${req.user.name}.
-Your character is highly polished, elegant, supportive yet factual, and slightly British (like Tony Stark's assistant J.A.R.V.I.S.).
-Your main purpose is to analyze ${req.user.name}'s life data, organize tasks, celebrate streaks, warn about budget overages, detect behavioral pitfalls, and advise corrective operations.
+  console.log(`[PIPELINE START] Processing chat request: "${message}"`);
 
-## USER BEHAVIOR PATTERNS:
-- Peak productivity hours: ${getPeakHours(userData.userPatterns)}
-- Most productive day: ${userData.userPatterns?.mostProductiveDay || "Tuesday"}
-- Average tasks completed per day: ${userData.userPatterns?.avgTasksCompletedPerDay || 4.2}
-- Most skipped habit: ${userData.userPatterns?.mostSkippedHabit || "Exercise"}
-- Streak break pattern: Often misses on ${userData.userPatterns?.streakBreakDays?.join(', ') || "Sunday"}
+  // 1. Initial State: Idle -> Thinking
+  transitionWorkflowState(userData, "Thinking");
 
-## CURRENT STATE DATASET:
-- Name: ${req.user.name}
-- Email: ${req.user.email}
-- Monthly aggregate budget limit: $${userData.profile.budgetLimit}
-- Core personality profile preference: ${userData.profile.aiPersonality}
-
---- Tasks list currently recorded in Database:
-${taskSummary}
-
---- Habit structures current streaking data:
-${habitSummary}
-
---- Financial Category budgets and current accumulated monthly cost:
-${financialSummary}
-
-Always respond to queries in character, addressing the user as "Sir" or "${req.user.name}".
-Keep responses extremely brief, conversational, and ruthlessly concise.
-- DO NOT use markdown formatting, asterisks (*), or bullet points under any circumstances.
-- Deliver insights in short, sophisticated, flowing paragraphs.
-- Proactively warn if the user is on a streak-break day pattern.
-Proactively warn if the user is on a streak-break day pattern, and suggest scheduling hard tasks during peak focus windows.
-
---- Active User Context Interface:
-The user is viewing: ${activeContext?.currentView || "dashboard"}.
-- Focused/Highlighted Task: ${activeContext?.selectedTaskName ? `'${activeContext.selectedTaskName}' (ID: ${activeContext.selectedTaskId})` : "None"}
-- Focused/Highlighted Habit: ${activeContext?.selectedHabitName ? `'${activeContext.selectedHabitName}' (ID: ${activeContext.selectedHabitId})` : "None"}
-
---- Command Execution Protocols:
-If the user specifies an action like "delete that task", "complete this habit", etc:
-1. Resolve target entity using Highlighted indicators above first.
-2. If ambiguous, ask a clarifying question WITHOUT appending action tags.
-3. If authorized, append trigger tag at the very end: '[TRIGGER_ACTION: DELETE_TASK_id]' or '[TRIGGER_ACTION: TOGGLE_TASK_id]' or '[TRIGGER_ACTION: COMPLETE_HABIT_id]'.`;
-
-  let actionOutput = null;
+  let retriesCount = 0;
+  let toolUsageLogs: any[] = [];
+  let verificationTime = 0;
+  let reasoningTime = 0;
+  let responseConfidence = 100;
+  let responseRisk = "low";
+  let verificationIssues: string[] = [];
 
   try {
-    const ai = getOpenAI();
-    const response = await ai.chat.completions.create({
-      model: "llama-3.1-8b-instant",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...userData.chatHistory.map((msg: any) => ({ role: msg.role, content: msg.content })),
-        { role: "user", content: message }
-      ],
-      temperature: 0.6,
-    });
+    // 2. Goal Tracking: Update sub-milestones based on completed tasks or conversational cues
+    await autoTrackGoalProgress(message, userData);
 
-    let aiText = response.choices?.[0]?.message?.content || "Cognitive interface error, Sir.";
+    // 3. Execution Engine: Planning & Executing database tool mutations
+    const contextSummary = buildPiggyPrompt(message, userData, activeContext);
+    const execResult = await executeAgentGoal(message, contextSummary, userData);
+    toolUsageLogs = execResult.logs;
+
+    // Build fresh context summary after database changes (so the LLM gets the updated task/goal states)
+    const updatedContextSummary = buildPiggyPrompt(message, userData, activeContext);
+
+    // 4. Chat Reasoning Step (Generating response via cognitive assistant pipeline)
+    transitionWorkflowState(userData, "Thinking");
+    const reasoningStart = Date.now();
+    const systemPrompt = buildPiggyPrompt(message, userData, activeContext);
     
+    const thinkingResult = await runThinkingPipeline(
+      message,
+      updatedContextSummary,
+      userData.chatHistory,
+      systemPrompt
+    );
+    let aiText = thinkingResult.reply;
+    reasoningTime = Date.now() - reasoningStart;
+
+    // 5. Verification & Confidence Engine
+    transitionWorkflowState(userData, "Verifying");
+    const verificationStart = Date.now();
+    
+    const verifierRes = await verifyResponse(message, aiText, updatedContextSummary);
+    const confidenceRes = await scoreConfidence(message, aiText, updatedContextSummary);
+    verificationTime = Date.now() - verificationStart;
+
+    verificationIssues = verifierRes.valid ? [] : verifierRes.issues;
+    responseConfidence = confidenceRes.confidence;
+    responseRisk = confidenceRes.riskLevel;
+
+    // 6. Retry correction loop if verification failed or confidence is below 70%
+    if (verificationIssues.length > 0 || responseConfidence < 70) {
+      const retryResult = await runRetryLoop(
+        systemPrompt,
+        userData.chatHistory,
+        message,
+        updatedContextSummary,
+        userData,
+        aiText,
+        verificationIssues,
+        responseConfidence,
+        responseRisk as 'low' | 'medium' | 'high'
+      );
+      aiText = retryResult.reply;
+      retriesCount = retryResult.retriesUsed;
+      responseConfidence = retryResult.confidence;
+      responseRisk = retryResult.riskLevel;
+      verificationIssues = retryResult.verificationIssues;
+    }
+
+    // 7. Actions: Check if there are any traditional bracket triggers generated in the final response
     const actionRegex = /\[TRIGGER_ACTION:\s*(DELETE_TASK|TOGGLE_TASK|COMPLETE_HABIT)_([a-zA-Z0-9\-]+)\]/;
     const match = aiText.match(actionRegex);
-    
+    let actionOutput = null;
     if (match) {
       const type = match[1];
       const id = match[2];
       actionOutput = { type, id };
-      
+
       if (type === "DELETE_TASK") {
         userData.tasks = userData.tasks.filter((t: any) => t.id !== id);
       } else if (type === "TOGGLE_TASK") {
@@ -741,21 +837,67 @@ If the user specifies an action like "delete that task", "complete this habit", 
       aiText = aiText.replace(actionRegex, "").trim();
     }
 
+    // Format Piggy output style (British polite personality formatter)
+    aiText = formatPiggyResponse(aiText);
+
+    // Transition state to completed
+    transitionWorkflowState(userData, "Completed");
+
+    // 8. Reflection Engine
+    await generateAndSaveReflection(message, aiText, toolUsageLogs, retriesCount, userData);
+
+    // 9. Memory Updater (Auto-learn habits, deadlines, goals)
+    await parseAndSaveMemoryUpdates(message, aiText, userData);
+
+    // 10. Pipeline Log & Summary metrics
+    const executionDuration = Date.now() - startTime;
+    console.log(`[PIPELINE COMPLETE]
+  - Message: "${message}"
+  - Execution Duration: ${executionDuration}ms
+  - Reasoning Duration: ${reasoningTime}ms
+  - Verification Duration: ${verificationTime}ms
+  - Retries: ${retriesCount}
+  - Confidence Score: ${responseConfidence}%
+  - Risk Level: ${responseRisk}
+  - Tools Used: ${toolUsageLogs.map(l => l.tool).join(", ") || "None"}
+  - Verification Issues remaining: ${verificationIssues.length}`);
+
+    // Clean up current workflow state to Idle
+    transitionWorkflowState(userData, "Idle");
+
+    // Update history
     const userMsg = { id: `chat-${Date.now()}`, role: "user" as const, content: message, timestamp: new Date().toISOString() };
     const assistantMsg = { id: `chat-${Date.now() + 1}`, role: "assistant" as const, content: aiText, timestamp: new Date().toISOString() };
     userData.chatHistory.push(userMsg, assistantMsg);
-    
+
     if (userData.chatHistory.length > 30) {
       userData.chatHistory = userData.chatHistory.slice(-30);
     }
-    
+
+    // Save DB
     writeDB(db);
-    res.json({ success: true, reply: aiText, history: userData.chatHistory, actionTriggered: actionOutput });
+
+    res.json({
+      success: true,
+      reply: aiText,
+      history: userData.chatHistory,
+      actionTriggered: actionOutput,
+      metrics: {
+        executionDuration,
+        reasoningTime,
+        verificationTime,
+        retries: retriesCount,
+        confidence: responseConfidence,
+        riskLevel: responseRisk,
+        issues: verificationIssues
+      }
+    });
 
   } catch (error: any) {
-    console.error("Groq AI API Error:", error.message);
-    let fallbackText = `Indeed, Sir. I am online and stand ready to assist your productivity cockpit. (Simulated Offline Mode)`;
+    console.error("Pipeline Error:", error);
+    transitionWorkflowState(userData, "Idle");
     
+    let fallbackText = `Indeed, Sir. I am online and stand ready to assist your productivity cockpit. (Simulated Offline Mode)`;
     const userMsg = { id: `chat-${Date.now()}`, role: "user" as const, content: message, timestamp: new Date().toISOString() };
     const assistantMsg = { id: `chat-${Date.now() + 1}`, role: "assistant" as const, content: fallbackText, timestamp: new Date().toISOString() };
     userData.chatHistory.push(userMsg, assistantMsg);
@@ -764,17 +906,23 @@ If the user specifies an action like "delete that task", "complete this habit", 
   }
 });
 
+
 // --- GROQ SMART PLANNING ENGINE ---
 app.post("/api/smart-planner", authenticateToken, async (req: any, res: any) => {
   const { workHours, sleepHours, personalPriorities, exercisePreference } = req.body;
   const db = readDB();
   const userData = getUserData(db, req.user.id);
 
+  const deadlines = detectUpcomingDeadlines(userData);
+  const deadlinesText = deadlines.map((dl: any) => `- DEADLINE: "${dl.title}" in ${dl.daysLeft} days (Due: ${dl.dueDate}, Type: ${dl.type})`).join("\n");
+
   const basePrompt = `Generate a detailed, custom-optimized timeline layout for tomorrow's daily plan based on these parameters:
 - Core Work/Study Hours: ${workHours || "9 AM to 5 PM"}
 - Targeted Sleep Duration: ${sleepHours || "8 hours"}
 - Exercise Category Preference: ${exercisePreference || "Morning cardio"}
 - Personal Goal Priorities: ${personalPriorities || "Coding, reading articles, financial balance"}
+- Upcoming Deadlines / Calendar Context:
+${deadlinesText || "No upcoming exams or immediate deadlines."}
 
 Critical Operational planning rules you MUST always adhere to:
 1. MAX 4 critical/high-priority cognitive focus sessions allowed in the daily timeline to prevent exhaustion.
@@ -782,6 +930,7 @@ Critical Operational planning rules you MUST always adhere to:
 3. Protect active daily habits: allocate dedicated space for active routines.
 4. Add transition buffer time: always schedule 15 to 30 minutes of Rest or Nourish buffer after any intense Focus sessions.
 5. Strict midnight boundary: never schedule any tasks past 24:00.
+6. Calendar/Deadline Awareness: If there is an active upcoming deadline or exam (e.g. within 5 days), prioritize study/preparation sessions related to that deadline, pad focus buffers, and schedule lighter or essential-only exercise.
 
 Return response in JSON format matching this schema strictly:
 {
@@ -864,7 +1013,7 @@ app.get('/api/jarvis/daily-brief', authenticateToken, async (req: any, res: any)
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const yDate = yesterday.toISOString().split('T')[0];
-  
+
   userData.habits.forEach((habit: any) => {
     if (!habit.logs?.includes(yDate)) {
       insights.push(`⚠️ You missed "${habit.name}" yesterday — your streak of ${habit.streak} days is at risk.`);
@@ -910,12 +1059,12 @@ app.get('/api/jarvis/daily-brief', authenticateToken, async (req: any, res: any)
 app.get('/api/jarvis/morning-brief', authenticateToken, async (req: any, res: any) => {
   const db = readDB();
   const userData = getUserData(db, req.user.id);
-  
+
   const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const urgentTasks = userData.tasks.filter((t: any) => t.status === 'pending' && t.category === 'urgent-important');
   const topTask = urgentTasks[0] || userData.tasks.find((t: any) => t.status === 'pending') || { title: "No pending tasks logged, Sir." };
-  
+
   let longestStreakHabit = { name: "Meditation", streak: 0 };
   if (userData.habits.length > 0) {
     const sortedHabits = [...userData.habits].sort((a: any, b: any) => b.streak - a.streak);
@@ -939,9 +1088,9 @@ app.get('/api/jarvis/morning-brief', authenticateToken, async (req: any, res: an
 app.get('/api/analytics/weekly-review', authenticateToken, async (req: any, res: any) => {
   const db = readDB();
   const userData = getUserData(db, req.user.id);
-  
+
   // Calculate past 7 days dates
-  const dates = [];
+  const dates: string[] = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
@@ -950,7 +1099,7 @@ app.get('/api/analytics/weekly-review', authenticateToken, async (req: any, res:
 
   // Tasks completed in the past 7 days
   const tasksCompleted = userData.tasks.filter((t: any) => t.status === "completed" && dates.includes(t.date)).length;
-  
+
   // Tasks skipped (rescheduledCount > 0 and date in past 7 days)
   const tasksSkipped = userData.tasks.filter((t: any) => t.rescheduledCount > 0 && dates.includes(t.date)).length;
 
@@ -977,7 +1126,7 @@ app.get('/api/analytics/weekly-review', authenticateToken, async (req: any, res:
     // Sort descending for best, ascending for worst
     habitsStats.sort((a: any, b: any) => b.doneCount - a.doneCount);
     bestHabit = habitsStats[0].doneCount > 0 ? habitsStats[0].name : "None";
-    
+
     // For worst habit, sort ascending
     const habitsStatsAsc = [...habitsStats].sort((a: any, b: any) => a.doneCount - b.doneCount);
     worstHabit = habitsStatsAsc[0].name;
@@ -1051,7 +1200,7 @@ app.post('/api/expenses/scan-receipt', authenticateToken, upload.single('receipt
 
     const response = await ai.chat.completions.create({
       // We must use Groq's vision model for image tasks
-      model: 'llama-3.2-11b-vision-preview', 
+      model: 'llama-3.2-11b-vision-preview',
       messages: [
         {
           role: 'user',
@@ -1087,22 +1236,22 @@ app.post('/api/expenses/scan-receipt', authenticateToken, upload.single('receipt
     res.json(fallbackScan);
   }
 });
-  // --- PROACTIVE NUDGE ENGINE ---
+// --- PROACTIVE NUDGE ENGINE ---
 app.post("/api/jarvis/trigger-nudge", authenticateToken, (req: any, res: any) => {
   const db = readDB();
   const userData = getUserData(db, req.user.id);
-  
+
   // Get today's name (e.g., "Sunday")
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const isRiskDay = userData.userPatterns?.streakBreakDays?.includes(today);
-  
+
   let nudgesGenerated = 0;
 
   userData.habits.forEach((habit: any) => {
     // Only protect habits that have an active streak
     if (habit.streak > 2 && isRiskDay) {
       const todayStr = new Date().toISOString().split("T")[0];
-      
+
       // If the habit hasn't been completed today, trigger the alarm
       if (!habit.logs.includes(todayStr)) {
         const notification = {
@@ -1113,10 +1262,10 @@ app.post("/api/jarvis/trigger-nudge", authenticateToken, (req: any, res: any) =>
           type: "warning",
           read: false
         };
-        
+
         // Prevent duplicate nudges for the same habit on the same day
         const alreadyNudged = userData.notifications.some((n: any) => n.id.includes(habit.id) && n.timestamp.startsWith(todayStr));
-        
+
         if (!alreadyNudged) {
           userData.notifications.unshift(notification);
           nudgesGenerated++;
@@ -1127,13 +1276,13 @@ app.post("/api/jarvis/trigger-nudge", authenticateToken, (req: any, res: any) =>
 
   if (nudgesGenerated > 0) writeDB(db);
 
-  res.json({ 
-    success: true, 
-    nudgesGenerated, 
-    message: nudgesGenerated > 0 ? `Deployed ${nudgesGenerated} proactive warnings.` : "Operational baseline stable. No risks detected." 
+  res.json({
+    success: true,
+    nudgesGenerated,
+    message: nudgesGenerated > 0 ? `Deployed ${nudgesGenerated} proactive warnings.` : "Operational baseline stable. No risks detected."
   });
 });
-    // --- TRACKNET VISION BRIDGE ---
+// --- TRACKNET VISION BRIDGE ---
 app.post('/api/vision/track', authenticateToken, upload.single('video'), async (req: any, res: any) => {
   if (!req.file) return res.status(400).json({ error: "No video payload detected." });
 
@@ -1155,6 +1304,239 @@ app.post('/api/vision/track', authenticateToken, upload.single('video'), async (
     res.status(500).json({ error: "Visual cortex offline or unreachable." });
   }
 });
+// =========================
+// PIGGY AI v3.0 INTELLIGENCE ENDPOINTS
+// =========================
+app.get("/api/piggy/dashboard", authenticateToken, (req: any, res: any) => {
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+
+  // Calculate dynamic outcomes for accepted recommendations
+  evaluateOutcomeMetrics(userData);
+  writeDB(db);
+
+  const cockpit = synthesizeAIDashboard(userData);
+
+  const habitsData = userData.habits.map((h: any) => {
+    const patterns = calculateHabitPatterns(h, userData.sleepLogs || [], userData.moods || []);
+    const risk = calculateHabitRisk(h, userData.sleepLogs || [], userData.moods || [], userData);
+    return {
+      id: h.id,
+      name: h.name,
+      icon: h.icon,
+      streak: h.streak,
+      patterns,
+      risk
+    };
+  });
+
+  const correlations = calculateCorrelations(userData.habits || [], userData.sleepLogs || [], userData.focusSessions || [], userData.tasks || []);
+  const achievements = checkAchievements(userData.profile || {}, userData.habits || [], userData.focusSessions || [], userData.expenses || []);
+  const deadlines = detectUpcomingDeadlines(userData);
+
+  res.json({
+    success: true,
+    cockpit,
+    habitsData,
+    correlations,
+    achievements,
+    aiMemory: userData.aiMemory || [],
+    recommendationsFeedback: userData.recommendationsFeedback || [],
+    monthlySnapshots: userData.monthlySnapshots || [],
+    deadlines
+  });
+});
+
+app.get("/api/piggy/coaching", authenticateToken, (req: any, res: any) => {
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  const today = new Date();
+
+  const last7DaysLogs = userData.habits.reduce((acc: number, h: any) => {
+    const logs7 = h.logs.filter((l: string) => getDaysBetween(l, today) <= 7);
+    return acc + logs7.length;
+  }, 0);
+  const maxPossibleLogs7 = (userData.habits.length * 7) || 1;
+  const weeklyCompletionRate = Math.round((last7DaysLogs / maxPossibleLogs7) * 100);
+
+  let bestHabit = "None";
+  let highestRate = -1;
+  let weakestHabit = "None";
+  let lowestRate = 101;
+
+  userData.habits.forEach((h: any) => {
+    const rate = (h.logs.filter((l: string) => getDaysBetween(l, today) <= 30).length / 30) * 100;
+    if (rate > highestRate) {
+      highestRate = rate;
+      bestHabit = h.name;
+    }
+    if (rate < lowestRate) {
+      lowestRate = rate;
+      weakestHabit = h.name;
+    }
+  });
+
+  const monthlyTrends = (userData.monthlySnapshots || []).map((m: any) => ({
+    month: m.month,
+    completion: m.habitConsistency
+  }));
+
+  monthlyTrends.push({
+    month: "Current (30D)",
+    completion: weeklyCompletionRate
+  });
+
+  res.json({
+    success: true,
+    weeklyCoach: {
+      completionRate: weeklyCompletionRate,
+      bestHabit,
+      weakestHabit,
+      mostImproved: userData.habits[2]?.name || "Mindfulness Meditation",
+      wins: "+15% consistency in reading",
+      watchOut: "Sunday morning skip pattern",
+      recommendedFocus: "Maintain early morning scheduling"
+    },
+    monthlyTrends
+  });
+});
+
+app.get("/api/piggy/reflections", authenticateToken, (req: any, res: any) => {
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  res.json({ success: true, reflections: userData.reflections || [] });
+});
+
+app.post("/api/piggy/reflection/generate", authenticateToken, async (req: any, res: any) => {
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  if (!userData.reflections) userData.reflections = [];
+  const existing = userData.reflections.find((r: any) => r.date === todayStr);
+  if (existing) {
+    return res.json({ success: true, reflection: existing });
+  }
+
+  const completedHabits = userData.habits.filter((h: any) => h.logs.includes(todayStr)).length;
+  const totalHabits = userData.habits.length;
+
+  const todaySleep = userData.sleepLogs.find((s: any) => s.date === todayStr)?.duration || 7.5;
+  const todayMood = userData.moods.find((m: any) => m.createdAt.startsWith(todayStr))?.mood || "good";
+  const todayFocusSessions = userData.focusSessions.filter((s: any) => s.timestamp.startsWith(todayStr));
+  const todayFocusMinutes = todayFocusSessions.reduce((sum: number, s: any) => sum + s.durationMinutes, 0);
+
+  const prompt = `Write a short personal diary entry for today based on these achievements:
+- Habits completed: ${completedHabits}/${totalHabits}
+- Mood rating: ${todayMood}
+- Sleep logged: ${todaySleep} hours
+- Focus minutes completed: ${todayFocusMinutes} minutes
+Roleplay as Piggy, a sophisticated, factual, and slightly British life butler.
+Keep it extremely concise (under 4 sentences), starting with 'Today:' and using elegant language. Do not use any markdown formatting.`;
+
+  let reflectionText = `Today, you completed ${completedHabits} of ${totalHabits} habits with a ${todayMood} cognitive disposition. Focus mode registered ${todayFocusMinutes} active minutes, Sir.`;
+  try {
+    const ai = getOpenAI();
+    const response = await ai.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.6
+    });
+    reflectionText = response.choices?.[0]?.message?.content || reflectionText;
+  } catch (error: any) {
+    console.error("Reflection Generation Error:", error.message);
+  }
+
+  const reflection = {
+    date: todayStr,
+    completedHabitsCount: completedHabits,
+    totalHabitsCount: totalHabits,
+    mood: todayMood,
+    focusMinutes: todayFocusMinutes,
+    reflectionText,
+    timestamp: new Date().toISOString()
+  };
+
+  userData.reflections.push(reflection);
+  writeDB(db);
+
+  res.json({ success: true, reflection });
+});
+
+// Add new memory to user vault (Sub-Engine 1)
+app.post("/api/piggy/memory", authenticateToken, (req: any, res: any) => {
+  const { fact, category } = req.body;
+  if (!fact || !category) return res.status(400).json({ error: "Fact and category are required." });
+
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  if (!userData.aiMemory) userData.aiMemory = [];
+
+  const newFact = {
+    id: `mem-${Date.now()}`,
+    fact,
+    category,
+    timestamp: new Date().toISOString()
+  };
+
+  userData.aiMemory.push(newFact);
+  writeDB(db);
+  res.json({ success: true, fact: newFact });
+});
+
+// Delete memory from user vault (Sub-Engine 1)
+app.delete("/api/piggy/memory/:id", authenticateToken, (req: any, res: any) => {
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  if (!userData.aiMemory) userData.aiMemory = [];
+
+  userData.aiMemory = userData.aiMemory.filter((m: any) => m.id !== req.params.id);
+  writeDB(db);
+  res.json({ success: true });
+});
+
+// Log suggestion feedback loop (Sub-Engine 2 & 3)
+app.post("/api/piggy/feedback", authenticateToken, (req: any, res: any) => {
+  const { text, type, status, habitId } = req.body;
+  if (!text || !status) return res.status(400).json({ error: "Text and status are required." });
+
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  if (!userData.recommendationsFeedback) userData.recommendationsFeedback = [];
+
+  let baseline = 50;
+  if (habitId) {
+    const habit = userData.habits.find((h: any) => h.id === habitId);
+    if (habit) {
+      const patterns = calculateHabitPatterns(habit, userData.sleepLogs || [], userData.moods || []);
+      baseline = patterns.overallCompletion;
+    }
+  }
+
+  const newFeedback = {
+    id: `feed-${Date.now()}`,
+    text,
+    type: type || "habit_timing",
+    status,
+    timestamp: new Date().toISOString(),
+    baselineRateBefore: baseline,
+    habitId: habitId || undefined
+  };
+
+  userData.recommendationsFeedback.push(newFeedback);
+  writeDB(db);
+  res.json({ success: true, feedback: newFeedback });
+});
+
+// Proactive autonomous loops trigger
+app.post("/api/agent/autonomous-loop", authenticateToken, async (req: any, res: any) => {
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  const observation = await runAutonomousAgentLoop(userData);
+  writeDB(db);
+  res.json({ success: true, observation });
+});
+
 // Setup Vite & static assets
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
@@ -1211,36 +1593,40 @@ cron.schedule("0 21 * * *", () => {
   }
 });
 
-startServer();
+startServer().then(() => {
+  const db = readDB();
+  startBackgroundAgent(db, writeDB);
+  initializeScheduler(db, writeDB);
+});
 
 // =========================
 // MOOD TRACKER
 // =========================
-app.post("/api/mood", authenticateToken, (req, res)=>{
-  const {mood,note}=req.body;
-  const db=readDB();
-  const userData=getUserData(db, req.user.id);
+app.post("/api/mood", authenticateToken, (req, res) => {
+  const { mood, note } = req.body;
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
 
-  if(!userData.moods) userData.moods=[];
+  if (!userData.moods) userData.moods = [];
 
-  const entry={
-    id:Date.now().toString(),
+  const entry = {
+    id: Date.now().toString(),
     mood,
-    note:note || "",
-    createdAt:new Date().toISOString()
+    note: note || "",
+    createdAt: new Date().toISOString()
   };
 
   userData.moods.push(entry);
   writeDB(db);
 
-  res.json({ success:true, mood:entry });
+  res.json({ success: true, mood: entry });
 });
 
-app.get("/api/mood/today", authenticateToken,(req,res)=>{
-  const db=readDB();
-  const userData=getUserData(db, req.user.id);
-  const today=new Date().toISOString().slice(0,10);
-  const mood=userData.moods?.find((m:any)=>m.createdAt.startsWith(today));
+app.get("/api/mood/today", authenticateToken, (req, res) => {
+  const db = readDB();
+  const userData = getUserData(db, req.user.id);
+  const today = new Date().toISOString().slice(0, 10);
+  const mood = userData.moods?.find((m: any) => m.createdAt.startsWith(today));
   res.json(mood || null);
 });
 
@@ -1251,17 +1637,17 @@ app.post("/api/sleep", authenticateToken, (req: any, res: any) => {
   const { sleepTime, wakeTime, duration, date } = req.body;
   const db = readDB();
   const userData = getUserData(db, req.user.id);
-  
+
   if (!userData.sleepLogs) userData.sleepLogs = [];
   const index = userData.sleepLogs.findIndex((s: any) => s.date === date);
   const entry = { sleepTime, wakeTime, duration: parseFloat(duration), date };
-  
+
   if (index > -1) {
     userData.sleepLogs[index] = entry;
   } else {
     userData.sleepLogs.push(entry);
   }
-  
+
   writeDB(db);
   res.json({ success: true, sleepLog: entry });
 });

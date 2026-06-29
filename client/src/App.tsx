@@ -7,6 +7,7 @@ import {
 
 // Modular page imports
 import { DashboardView } from "./components/DashboardView";
+import { AIDashboardView } from "./components/AIDashboardView";
 import { MissionsView } from "./components/MissionsView";
 import { TrackNetView } from "./components/TrackNetView";
 import { Scan } from "lucide-react";
@@ -29,7 +30,7 @@ import { LoginView } from "./components/LoginView";
 // Redundant type models
 import { FullOSData, Task, Habit, ChatMessage, SystemNotification, TaskPriority } from "./types";
 
-type ViewState = "dashboard" | "missions" | "habits" | "goals" | "analytics" | "ai-core" | "focus-timer" | "settings" | "tracknet" | "expenses";
+type ViewState = "dashboard" | "missions" | "habits" | "goals" | "analytics" | "ai-core" | "focus-timer" | "settings" | "tracknet" | "expenses" | "ai-dashboard";
 export default function App() {
   // Navigation & Frame layouts 
   const [activeView, setActiveView] = useState<ViewState>("dashboard");
@@ -652,6 +653,7 @@ export default function App() {
           <nav className="p-3 space-y-1 font-display">
             {[
               { key: "dashboard", label: "Mission Control", icon: LayoutDashboard },
+              { key: "ai-dashboard", label: "AI Coach Dashboard", icon: Sparkles },
               { key: "missions", label: "Tactical Missions", icon: Calendar },
               { key: "habits", label: "Habit Conformance", icon: RefreshCw },
               { key: "goals", label: "Strategic Vault", icon: Target },
@@ -879,11 +881,16 @@ export default function App() {
             profileName={osData.profile.name} 
           />
           )}
+
+          {activeView === "ai-dashboard" && (
+            <AIDashboardView token={token} profileName={osData.profile.name} />
+          )}
           {activeView === "ai-core" && (
             <PiggyChatView
               chatHistory={osData.chatHistory}
               onSendMessage={handleSendChatMessage}
               isLoading={isUpdatingDb}
+              token={token}
             />
           )}
 

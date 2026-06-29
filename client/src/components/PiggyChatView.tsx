@@ -6,26 +6,44 @@ interface PiggyChatViewProps {
   chatHistory: ChatMessage[];
   onSendMessage: (text: string) => Promise<void>;
   isLoading: boolean;
+  token?: string | null;
 }
 
 const SHORTCUT_CHIPS = [
+  "Recall Context",
   "Create Task",
   "Show Streak",
   "Plan Tomorrow",
   "Motivate Me",
-  "Productivity Review",
-  "Week Performance"
+  "Productivity Review"
 ];
 
 export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
   chatHistory,
   onSendMessage,
-  isLoading
+  isLoading,
+  token
 }) => {
   const [inputText, setInputText] = useState("");
   const [piggyState, setPiggyState] = useState<"IDLE" | "PASSIVE_LISTENING" | "LISTENING" | "THINKING" | "SPEAKING">("IDLE");
   const [isWakeWordMode, setIsWakeWordMode] = useState(false);
   const [micGranted, setMicGranted] = useState<boolean | null>(null);
+  const [memoriesCount, setMemoriesCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (token) {
+      fetch("/api/piggy/dashboard", {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.aiMemory) {
+            setMemoriesCount(data.aiMemory.length);
+          }
+        })
+        .catch(err => console.error("Error fetching memory facts count:", err));
+    }
+  }, [token, chatHistory]);
 
   const isWakeWordModeRef = useRef(false);
   const recognitionRef = useRef<any>(null);
@@ -89,12 +107,12 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
     
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     let formulation = `Sir, please compile the following report: ${chip}.`;
+    if (chip === "Recall Context") formulation = "Piggy, what do you remember about my current preferences, goals, and deadlines?";
     if (chip === "Create Task") formulation = "Sir, let's designate a new core task: Refactor cache protocols.";
     if (chip === "Show Streak") formulation = "Check my current habit progress structure.";
     if (chip === "Plan Tomorrow") formulation = "Plan tomorrow's tactical timeline schedule.";
     if (chip === "Motivate Me") formulation = "Speak an existential motivation quote, Piggy.";
     if (chip === "Productivity Review") formulation = "Conduct an outcome forecast audit on My Goal Vault objectives.";
-    if (chip === "Week Performance") formulation = "Calculate my aggregate task completion rates.";
 
     setPiggyState("THINKING");
     await handleSendMessage(formulation);
@@ -243,7 +261,14 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
         <div className="absolute inset-0 bg-[radial-gradient(rgba(245,166,35,0.06)_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
 
         <div className="text-center space-y-1 z-10 w-full flex justify-between items-center pb-2 border-b border-white/5">
-          <span className="font-mono text-[9px] font-bold text-amber-500 uppercase tracking-widest">Cognitive Transceiver</span>
+          <div className="flex flex-col items-start gap-0.5">
+            <span className="font-mono text-[9px] font-bold text-amber-500 uppercase tracking-widest">Cognitive Transceiver</span>
+            {memoriesCount !== null && (
+              <span className="font-mono text-[7px] text-slate-450 uppercase tracking-wider">
+                Memory Vault: {memoriesCount} facts stored
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1.5">
             {micGranted === true ? (
               <span className="font-mono text-[8px] text-emerald-500 bg-emerald-500/10 px-1 rounded border border-emerald-500/20">MIC UPLINK</span>
