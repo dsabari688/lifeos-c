@@ -15,17 +15,15 @@
     "types": [
       "node"
     ],
-    "outDir": "./dist"
-  },
-  "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node"
+    "typeRoots": [
+      "server/node_modules/@types"
+    ]
   },
   "include": [
-    "**/*.ts"
+    "server/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "dist"
+    "server/node_modules",
+    "server/dist"
   ]
 }

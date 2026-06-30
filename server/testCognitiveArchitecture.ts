@@ -1,13 +1,13 @@
-import { runReasoningEngine } from "./piggyReasoning.js";
-import { runPlanningEngine } from "./piggyPlanning.js";
-import { runRecommendationEngine } from "./piggyRecommendation.js";
-import { runVerificationEngine } from "./piggyVerification.js";
-import { executeToolWithGuard } from "./piggyToolExecutor.js";
-import { calculateTrends } from "./piggyTrendAnalysis.js";
-import { runPredictiveAnalytics } from "./piggyPrediction.js";
-import { discoverBehavioralPatterns } from "./piggyPatternDiscovery.js";
-import { buildSuccessModel } from "./piggySuccessModel.js";
-import { buildFailureModel } from "./piggyFailureModel.js";
+import { runReasoningEngine } from "./piggy/cognition/piggyReasoning.js";
+import { runPlanningEngine } from "./piggy/planning/piggyPlanning.js";
+import { runRecommendationEngine } from "./piggy/cognition/piggyRecommendation.js";
+import { runVerificationEngine } from "./piggy/safety/piggyVerification.js";
+import { executeToolWithGuard } from "./piggy/execution/piggyToolExecutor.js";
+import { calculateTrends } from "./piggy/prediction/piggyTrendAnalysis.js";
+import { runPredictiveAnalytics } from "./piggy/prediction/piggyPrediction.js";
+import { discoverBehavioralPatterns } from "./piggy/cognition/piggyPatternDiscovery.js";
+import { buildSuccessModel } from "./piggy/prediction/piggySuccessModel.js";
+import { buildFailureModel } from "./piggy/prediction/piggyFailureModel.js";
 
 /**
  * Mock database state representation.

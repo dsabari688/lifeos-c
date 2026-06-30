@@ -1,0 +1,17 @@
+{
+  "short_name": "LifeOS",
+  "name": "LifeOS — Personal Command Cockpit",
+  "icons": [
+    {
+      "src": "https://ai.google.dev/static/site-assets/images/share-ais-513315318.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#020617",
+  "theme_color": "#f5a623",
+  "display": "standalone",
+  "orientation": "portrait"
+}

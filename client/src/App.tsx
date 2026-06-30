@@ -1,23 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { 
   Menu, X, Bell, User, LayoutDashboard, Calendar, RefreshCw, Target, 
   LineChart, Cpu, Clock, Settings, ShieldAlert, LogOut, CheckCircle, 
-  Terminal, Sparkles, LogIn, ChevronRight, Zap, Info, Wallet
+  Terminal, Sparkles, LogIn, ChevronRight, Zap, Info, Wallet, Scan
 } from "lucide-react";
-
-// Modular page imports
-import { DashboardView } from "./components/DashboardView";
-import { AIDashboardView } from "./components/AIDashboardView";
-import { MissionsView } from "./components/MissionsView";
-import { TrackNetView } from "./components/TrackNetView";
-import { Scan } from "lucide-react";
-import { HabitsView } from "./components/HabitsView";
-import { GoalsView } from "./components/GoalsView";
-import { AnalyticsView } from "./components/AnalyticsView";
-import { PiggyChatView } from "./components/PiggyChatView";
-import { FocusModeView } from "./components/FocusModeView";
-import { SettingsView } from "./components/SettingsView";
-import { ExpensesView } from "./components/ExpensesView";
 
 // Modal and sidebar drawer helpers
 import { TaskModal } from "./components/TaskModal";
@@ -30,12 +16,35 @@ import { LoginView } from "./components/LoginView";
 // Redundant type models
 import { FullOSData, Task, Habit, ChatMessage, SystemNotification, TaskPriority } from "./types";
 
+// React.lazy views for code splitting
+const DashboardView = lazy(() => import("./components/DashboardView").then(m => ({ default: m.DashboardView })));
+const AIDashboardView = lazy(() => import("./components/AIDashboardView").then(m => ({ default: m.AIDashboardView })));
+const MissionsView = lazy(() => import("./components/MissionsView").then(m => ({ default: m.MissionsView })));
+const TrackNetView = lazy(() => import("./components/TrackNetView").then(m => ({ default: m.TrackNetView })));
+const HabitsView = lazy(() => import("./components/HabitsView").then(m => ({ default: m.HabitsView })));
+const GoalsView = lazy(() => import("./components/GoalsView").then(m => ({ default: m.GoalsView })));
+const AnalyticsView = lazy(() => import("./components/AnalyticsView").then(m => ({ default: m.AnalyticsView })));
+const PiggyChatView = lazy(() => import("./components/PiggyChatView").then(m => ({ default: m.PiggyChatView })));
+const FocusModeView = lazy(() => import("./components/FocusModeView").then(m => ({ default: m.FocusModeView })));
+const SettingsView = lazy(() => import("./components/SettingsView").then(m => ({ default: m.SettingsView })));
+const ExpensesView = lazy(() => import("./components/ExpensesView").then(m => ({ default: m.ExpensesView })));
+
 type ViewState = "dashboard" | "missions" | "habits" | "goals" | "analytics" | "ai-core" | "focus-timer" | "settings" | "tracknet" | "expenses" | "ai-dashboard";
 export default function App() {
   // Navigation & Frame layouts 
   const [activeView, setActiveView] = useState<ViewState>("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  
+  // Toast notifications state (UX improvements)
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: "success" | "error" | "info" | "warning" }>>([]);
+  const showToast = (message: string, type: "success" | "error" | "info" | "warning" = "info") => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
   
 
   // Splash Screen & Login Multi-stage indicators
@@ -185,6 +194,20 @@ export default function App() {
     return () => clearInterval(checkInterval);
   }, [osData, isLoggedIn]);
 
+  const unreadCount = React.useMemo(() => {
+    if (!osData) return 0;
+    return osData.notifications.filter(n => !n.read).length;
+  }, [osData]);
+  
+  // Dynamically calculate the real productivity score for the Daily Review
+  const realProductivityScore = React.useMemo(() => {
+    if (!osData) return 0;
+    const todayStrForScore = new Date().toISOString().split("T")[0];
+    const taskScore = osData.tasks.length ? (osData.tasks.filter(t => t.status === "completed").length / osData.tasks.length) * 60 : 0;
+    const habitScore = osData.habits.length ? (osData.habits.filter(h => h.logs.includes(todayStrForScore)).length / osData.habits.length) * 40 : 0;
+    return Math.round(taskScore + habitScore);
+  }, [osData]);
+
   // --- ACTIONS WITH BACKEND API ---
 
   // Tasks updates
@@ -204,9 +227,11 @@ export default function App() {
       });
       if (res.ok) {
         await hydrateSystemData();
+        showToast("Task parameters updated, Sir.", "success");
       }
     } catch (err) {
       console.error("Error toggling task block:", err);
+      showToast("Error updating task parameters.", "error");
     } finally {
       setIsUpdatingDb(false);
     }
@@ -238,9 +263,11 @@ export default function App() {
       if (res.ok) {
         await hydrateSystemData();
         setEditingTask(null);
+        showToast(editingTask ? "Task settings synchronized, Sir." : "Strategic task compiled successfully.", "success");
       }
     } catch (err) {
       console.error("Save Task Err:", err);
+      showToast("Tactical error registering task.", "error");
     } finally {
       setIsUpdatingDb(false);
     }
@@ -265,10 +292,11 @@ export default function App() {
       });
       if (res.ok) {
         await hydrateSystemData();
-        alert("Sir, tactical deferral processed. Anti-abandonment logged.");
+        showToast("Sir, tactical deferral processed. Anti-abandonment logged.", "warning");
       }
     } catch (err) {
       console.error("Reschedule Err:", err);
+      showToast("Strategic rescheduling collapsed.", "error");
     } finally {
       setIsUpdatingDb(false);
     }
@@ -281,9 +309,11 @@ export default function App() {
       const res = await authenticatedFetch(`/api/tasks/${taskId}`, { method: "DELETE" });
       if (res.ok) {
         await hydrateSystemData();
+        showToast("Strategic task module decommissioned.", "info");
       }
     } catch (err) {
       console.error("Delete Err:", err);
+      showToast("Tactical task purge failure.", "error");
     } finally {
       setIsUpdatingDb(false);
     }
@@ -301,9 +331,11 @@ export default function App() {
       });
       if (res.ok) {
         await hydrateSystemData();
+        showToast("Habit conformance tracking updated.", "success");
       }
     } catch (err) {
       console.error("Habit Toggle Err:", err);
+      showToast("Error registering habit conformance.", "error");
     } finally {
       setIsUpdatingDb(false);
     }
@@ -610,13 +642,6 @@ export default function App() {
     );
   }
 
-  const unreadCount = osData.notifications.filter(n => !n.read).length;
-  
-  // Dynamically calculate the real productivity score for the Daily Review
-  const todayStrForScore = new Date().toISOString().split("T")[0];
-  const taskScore = osData.tasks.length ? (osData.tasks.filter(t => t.status === "completed").length / osData.tasks.length) * 60 : 0;
-  const habitScore = osData.habits.length ? (osData.habits.filter(h => h.logs.includes(todayStrForScore)).length / osData.habits.length) * 40 : 0;
-  const realProductivityScore = Math.round(taskScore + habitScore);
 
   return (
     <div className="min-h-screen bg-slate-50/50 text-slate-650 flex font-sans">
@@ -809,116 +834,123 @@ export default function App() {
 
         {/* Primary Page content stage viewport */}
         <main className="flex-1 p-6 max-w-7xl w-full mx-auto animate-in fade-in duration-200">
-          {activeView === "dashboard" && (
-            <DashboardView
-              data={osData}
-              token={token}
-              onToggleTask={handleToggleTask}
-              onEditTask={handleEditTaskTrigger}
-              onRescheduleTaskSubmit={handleRescheduleTaskSubmit}
-              onNavigateToView={(view) => setActiveView(view as ViewState)}
-              onOpenCreateTaskModal={() => {
-                setEditingTask(null);
-                setIsTaskModalOpen(true);
-              }}
-              onTriggerDailyReview={() => setIsDailyReviewOpen(true)}
-              onTriggerWeeklyReview={() => setIsWeeklyReviewOpen(true)}
-              selectedTaskId={selectedTaskId}
-              onFocusTask={(id, title) => {
-                setSelectedTaskId(id);
-                setSelectedTaskTitle(title);
-              }}
-              onNudgeTriggered={hydrateSystemData}
-            />
-          )}
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center min-h-[400px] w-full">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+              <p className="mt-4 text-slate-400 font-display text-sm tracking-widest uppercase">Calibrating system parameters...</p>
+            </div>
+          }>
+            {activeView === "dashboard" && (
+              <DashboardView
+                data={osData}
+                token={token}
+                onToggleTask={handleToggleTask}
+                onEditTask={handleEditTaskTrigger}
+                onRescheduleTaskSubmit={handleRescheduleTaskSubmit}
+                onNavigateToView={(view) => setActiveView(view as ViewState)}
+                onOpenCreateTaskModal={() => {
+                  setEditingTask(null);
+                  setIsTaskModalOpen(true);
+                }}
+                onTriggerDailyReview={() => setIsDailyReviewOpen(true)}
+                onTriggerWeeklyReview={() => setIsWeeklyReviewOpen(true)}
+                selectedTaskId={selectedTaskId}
+                onFocusTask={(id, title) => {
+                  setSelectedTaskId(id);
+                  setSelectedTaskTitle(title);
+                }}
+                onNudgeTriggered={hydrateSystemData}
+              />
+            )}
 
-          {activeView === "missions" && (
-            <MissionsView
-              tasks={osData.tasks}
-              onToggleTask={handleToggleTask}
-              onEditTask={handleEditTaskTrigger}
-              onDeleteTask={handleDeleteTask}
-              onOpenCreateModal={() => {
-                setEditingTask(null);
-                setIsTaskModalOpen(true);
-              }}
-              onRescheduleTaskSubmit={handleRescheduleTaskSubmit}
-              selectedTaskId={selectedTaskId}
-              onFocusTask={(id, title) => {
-                setSelectedTaskId(id);
-                setSelectedTaskTitle(title);
-              }}
-            />
-          )}
+            {activeView === "missions" && (
+              <MissionsView
+                tasks={osData.tasks}
+                onToggleTask={handleToggleTask}
+                onEditTask={handleEditTaskTrigger}
+                onDeleteTask={handleDeleteTask}
+                onOpenCreateModal={() => {
+                  setEditingTask(null);
+                  setIsTaskModalOpen(true);
+                }}
+                onRescheduleTaskSubmit={handleRescheduleTaskSubmit}
+                selectedTaskId={selectedTaskId}
+                onFocusTask={(id, title) => {
+                  setSelectedTaskId(id);
+                  setSelectedTaskTitle(title);
+                }}
+              />
+            )}
 
-          {activeView === "habits" && (
-            <HabitsView
-              habits={osData.habits}
-              onToggleHabit={handleToggleHabit}
-              onAddHabit={handleAddHabit}
-              onDeleteHabit={handleDeleteHabit}
-              selectedHabitId={selectedHabitId}
-              onFocusHabit={(id, name) => {
-                setSelectedHabitId(id);
-                setSelectedHabitName(name);
-              }}
-            />
-          )}
+            {activeView === "habits" && (
+              <HabitsView
+                habits={osData.habits}
+                onToggleHabit={handleToggleHabit}
+                onAddHabit={handleAddHabit}
+                onDeleteHabit={handleDeleteHabit}
+                selectedHabitId={selectedHabitId}
+                onFocusHabit={(id, name) => {
+                  setSelectedHabitId(id);
+                  setSelectedHabitName(name);
+                }}
+              />
+            )}
 
-          {activeView === "goals" && (
-            <GoalsView 
-              goals={osData.goals || []}
-              onAddGoal={handleAddGoal}
-              onDeleteGoal={handleDeleteGoal}
-              onUpdateProgress={handleUpdateGoalProgress}
-            />
-          )}
+            {activeView === "goals" && (
+              <GoalsView 
+                goals={osData.goals || []}
+                onAddGoal={handleAddGoal}
+                onDeleteGoal={handleDeleteGoal}
+                onUpdateProgress={handleUpdateGoalProgress}
+              />
+            )}
 
-          {activeView === "analytics" && (
-            <AnalyticsView 
-            tasks={osData.tasks} 
-            habits={osData.habits} 
-            profileName={osData.profile.name} 
-          />
-          )}
+            {activeView === "analytics" && (
+              <AnalyticsView 
+                tasks={osData.tasks} 
+                habits={osData.habits} 
+                profileName={osData.profile.name} 
+              />
+            )}
 
-          {activeView === "ai-dashboard" && (
-            <AIDashboardView token={token} profileName={osData.profile.name} />
-          )}
-          {activeView === "ai-core" && (
-            <PiggyChatView
-              chatHistory={osData.chatHistory}
-              onSendMessage={handleSendChatMessage}
-              isLoading={isUpdatingDb}
-              token={token}
-            />
-          )}
+            {activeView === "ai-dashboard" && (
+              <AIDashboardView token={token} profileName={osData.profile.name} />
+            )}
+            {activeView === "ai-core" && (
+              <PiggyChatView
+                chatHistory={osData.chatHistory}
+                onSendMessage={handleSendChatMessage}
+                isLoading={isUpdatingDb}
+                token={token}
+              />
+            )}
 
-          {activeView === "focus-timer" && (
-            <FocusModeView defaultTaskTitle={selectedTaskTitle || undefined} token={token} />
-          )}
+            {activeView === "focus-timer" && (
+              <FocusModeView defaultTaskTitle={selectedTaskTitle || undefined} token={token} />
+            )}
 
-          {activeView === "settings" && (
-            <SettingsView
-              initialProfile={osData.profile}
-              onSaveProfile={handleSaveProfile}
-            />
-          )}
-          {activeView === "expenses" && (
-            <ExpensesView
-              expenses={osData.expenses || []}
-              budgets={osData.budgets || []}
-              token={token}
-              onAddExpense={handleAddExpense}
-              onUpdateBudget={handleUpdateBudget}
-              onExplainExpense={handleExplainExpense}
-            />
-          )}
-          
-          {/* PASTE THE TRACKNET BLOCK HERE */}
-          {activeView === "tracknet" && (
-            <TrackNetView />
-          )}
+            {activeView === "settings" && (
+              <SettingsView
+                initialProfile={osData.profile}
+                onSaveProfile={handleSaveProfile}
+              />
+            )}
+            {activeView === "expenses" && (
+              <ExpensesView
+                expenses={osData.expenses || []}
+                budgets={osData.budgets || []}
+                token={token}
+                onAddExpense={handleAddExpense}
+                onUpdateBudget={handleUpdateBudget}
+                onExplainExpense={handleExplainExpense}
+              />
+            )}
+            
+            {/* PASTE THE TRACKNET BLOCK HERE */}
+            {activeView === "tracknet" && (
+              <TrackNetView />
+            )}
+          </Suspense>
         </main>
       </div>
 
@@ -997,6 +1029,26 @@ export default function App() {
           </div>
         </button>
       )}
+      {/* Toast Notification HUD (UX overlay) */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`p-4 rounded-xl shadow-xl border flex items-center gap-3 backdrop-blur-md pointer-events-auto animate-in slide-in-from-right duration-300 font-display ${
+              toast.type === "success"
+                ? "bg-emerald-950/80 border-emerald-500/20 text-emerald-300"
+                : toast.type === "error"
+                ? "bg-rose-950/80 border-rose-500/20 text-rose-300"
+                : toast.type === "warning"
+                ? "bg-amber-950/80 border-amber-500/20 text-amber-300"
+                : "bg-slate-900/80 border-slate-700/30 text-slate-300"
+            }`}
+          >
+            <Info className="w-4.5 h-4.5 shrink-0" />
+            <span className="text-xs font-semibold leading-tight">{toast.message}</span>
+          </div>
+        ))}
+      </div>
 
     </div>
   );
