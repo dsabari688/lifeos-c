@@ -6,3 +6,6 @@ dist/
 lifeos_db.json
 server/lifeos_db.json
 structure.txt
+# Runtime logs
+server/logs/
+*.log
