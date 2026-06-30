@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  lifeos-cockpit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - JWT_SECRET=${JWT_SECRET:-production-secret-lifeos-key-1010}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+    volumes:
+      # Mount database file, automated backups, and Winston trace logs to persist data
+      - ./server/lifeos_db.json:/app/server/lifeos_db.json
+      - ./server/backup:/app/server/backup
+      - ./server/logs:/app/server/logs
+    restart: always
