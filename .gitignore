@@ -9,3 +9,16 @@ structure.txt
 # Runtime logs
 server/logs/
 *.log
+# Database backups, temp writes, and test coverage (build artifacts)
+server/backup/
+*.tmp
+coverage/
+server/coverage/
+# Backups and temp files
+server/backup/
+*.tmp
+server/lifeos_db.json.tmp
+
+# Coverage reports
+coverage/
+server/coverage/
