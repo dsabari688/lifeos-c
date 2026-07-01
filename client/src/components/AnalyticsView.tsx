@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState } from "react";
 import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Clock, Activity, Sparkles, Brain } from "lucide-react";
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -182,7 +182,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ tasks, habits, pro
           </div>
 
           <div className="mt-6 pt-3 border-t border-slate-800/80 font-mono text-[8px] text-slate-500 uppercase tracking-wider flex justify-between">
-            <span>MODEL: GEMINI-2.0-FLASH</span>
+            <span>MODEL: LLAMA-3.1-8B-INSTANT</span>
             <span>PROBABILITY PROG: OPTIMAL</span>
           </div>
         </div>

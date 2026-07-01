@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import nodemailer from "nodemailer";
 import { dbService } from "../db/index.js";
 import { logger } from "../logger.js";
@@ -48,9 +48,9 @@ router.post(
   "/api/auth/register",
   authRateLimiter,
   validateBody(registerSchema),
-  async (req: any, res: any) => {
+  async (req: Request, res: Response) => {
     const { name, email, password } = req.body;
-    const clientIp = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const clientIp = req.ip || (Array.isArray(req.headers["x-forwarded-for"]) ? req.headers["x-forwarded-for"][0] : req.headers["x-forwarded-for"]) || "unknown";
 
     try {
       // 1. Password complexity check
@@ -132,9 +132,9 @@ router.post(
   "/api/auth/verify-otp",
   authRateLimiter,
   validateBody(verifyOtpSchema),
-  async (req: any, res: any) => {
+  async (req: Request, res: Response) => {
     const { email, otp } = req.body;
-    const clientIp = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const clientIp = req.ip || (Array.isArray(req.headers["x-forwarded-for"]) ? req.headers["x-forwarded-for"][0] : req.headers["x-forwarded-for"]) || "unknown";
 
     try {
       const record = otpStore[email];
@@ -219,9 +219,9 @@ router.post(
   "/api/auth/login",
   authRateLimiter,
   validateBody(loginSchema),
-  async (req: any, res: any) => {
+  async (req: Request, res: Response) => {
     const { email, password } = req.body;
-    const clientIp = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const clientIp = req.ip || (Array.isArray(req.headers["x-forwarded-for"]) ? req.headers["x-forwarded-for"][0] : req.headers["x-forwarded-for"]) || "unknown";
 
     try {
       const db = dbService.getDatabaseState();

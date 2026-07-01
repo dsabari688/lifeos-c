@@ -96,7 +96,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const highestStreak = habits.length > 0 ? Math.max(...habits.map(h => h.streak)) : 0;
 
   // Synthesize dynamic Life Score
-  const goalsCompletedRate = 0; // Set to 0 until the Goals API module is fully built!
+  const goals = data.goals || [];
+  const goalsCompletedRate = goals.length > 0 
+    ? Math.round(goals.reduce((acc, g) => acc + g.progress, 0) / goals.length) 
+    : 0;
   const lifeScore = Math.round((taskCompletionRate * 0.4) + (habitCompletionRate * 0.4) + (goalsCompletedRate * 0.2));
 
   // Get next pending tasks

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { User, Cpu, Bell, Shield, Palette, Check, Save } from "lucide-react";
+import { User, Cpu, Bell, Shield, Palette, Check, Save, AlertTriangle } from "lucide-react";
+import { useStore } from "../store/useStore";
 
 interface SettingsViewProps {
   initialProfile: {
@@ -31,6 +32,79 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onSaveProfile
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>("personal");
+  const { token, showToast } = useStore();
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [importData, setImportData] = useState<any>(null);
+
+  const handleBackupExport = () => {
+    fetch("/api/data", {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        const fileContent = JSON.stringify(data, null, 2);
+        const blob = new Blob([fileContent], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `lifeos-backup-${new Date().toISOString().split("T")[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("System database backup successfully compiled.", "success");
+      })
+      .catch(err => {
+        console.error("Export failure:", err);
+        showToast("Failed to compile system database parameters.", "error");
+      });
+  };
+
+  const executeBackupImport = async (data: any) => {
+    try {
+      const res = await fetch("/api/data/import", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (res.ok) {
+        showToast("Success! System state restored. Rebooting client variables.", "success");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        const errData = await res.json();
+        showToast(`Import failed: ${errData.error || "Server rejected package."}`, "error");
+      }
+    } catch (err) {
+      showToast("Failure transmitting database backup file.", "error");
+    }
+  };
+
+  const handleBackupImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (!parsed.tasks || !parsed.habits || !parsed.goals) {
+          showToast("Invalid backup file: missing core tasks/habits/goals collections.", "error");
+          return;
+        }
+        setImportData(parsed);
+        setShowImportConfirm(true);
+      } catch (err) {
+        showToast("Failure parsing database backup file.", "error");
+      }
+    };
+    reader.readAsText(file);
+  };
   
   // Local state form fields
   const [name, setName] = useState(initialProfile.name);
@@ -96,7 +170,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       dailyReviewTime: reviewTime,
       learnedPatterns: patterns
     });
-    alert("Sir, personal parameters and brain mapping successfully committed to database layers.");
+    showToast("Sir, personal parameters and brain mapping successfully committed to database layers.", "success");
   };
 
   const deletePattern = (idx: number) => {
@@ -176,7 +250,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button 
                 type="button" 
                 className="text-xs font-semibold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                onClick={() => alert("Simulated: Local file system camera capture triggered.")}
+                onClick={() => showToast("Simulated: Local file system camera capture triggered.", "info")}
               >
                 Deploy Profile Photo
               </button>
@@ -443,13 +517,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => alert("Simulated passcode sync flow initialized.")}
+                  onClick={() => showToast("Simulated passcode sync flow initialized.", "info")}
                   className="text-xs font-bold font-mono text-amber-600 hover:text-amber-700 shrink-0"
                 >
                   Update &rarr;
                 </button>
               </div>
             </div>
+
+            {/* Backup Systems */}
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">Database Backup & Portability</h4>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-4">Export full state backups as JSON files or restore database collections from a saved workspace file.</p>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={handleBackupExport}
+                  className="px-4 py-2 border border-amber-500/30 dark:border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold font-display text-[11px] rounded-xl cursor-pointer transition-all"
+                >
+                  Export System Backup
+                </button>
+                <label className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-655 dark:text-slate-400 font-bold font-display text-[11px] rounded-xl cursor-pointer inline-block transition-all">
+                  Import System Backup
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleBackupImport}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -482,6 +581,44 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
 
       </div>
+
+      {/* Database Backup Overwrite Confirmation Modal */}
+      {showImportConfirm && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-450 mb-3">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="font-display font-black text-base text-slate-900 dark:text-white">
+                Overwrite Database State
+              </h3>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-sans mb-5">
+              Warning: importing a backup package will completely overwrite all existing tasks, habits, and goals data. This operation cannot be undone.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowImportConfirm(false);
+                  setImportData(null);
+                }}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-950/60 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-display font-bold text-[10px] uppercase tracking-wider rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  executeBackupImport(importData);
+                  setShowImportConfirm(false);
+                  setImportData(null);
+                }}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-display font-bold text-[10px] uppercase tracking-wider rounded-xl shadow-sm cursor-pointer"
+              >
+                Overwrite
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

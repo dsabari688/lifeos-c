@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Mic, Send, Sparkles, VolumeX, Volume2 } from "lucide-react";
 import { ChatMessage } from "../types";
+import { useStore } from "../store/useStore";
 
 interface PiggyChatViewProps {
   chatHistory: ChatMessage[];
@@ -24,6 +25,7 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
   isLoading,
   token
 }) => {
+  const { showToast } = useStore();
   const [inputText, setInputText] = useState("");
   const [piggyState, setPiggyState] = useState<"IDLE" | "PASSIVE_LISTENING" | "LISTENING" | "THINKING" | "SPEAKING">("IDLE");
   const [isWakeWordMode, setIsWakeWordMode] = useState(false);
@@ -141,7 +143,7 @@ export const PiggyChatView: React.FC<PiggyChatViewProps> = ({
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Speech Recognition API is not supported in this browser.");
+      showToast("Speech Recognition API is not supported in this browser.", "error");
       return;
     }
 

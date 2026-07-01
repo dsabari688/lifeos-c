@@ -1,8 +1,0 @@
-﻿node_modules/
-dist/
-.env
-.env.local
-*.env
-lifeos_db.json
-server/lifeos_db.json
-structure.txt

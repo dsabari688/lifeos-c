@@ -1,7 +1,8 @@
-import express from "express";
+import express, { Response } from "express";
 import OpenAI from "openai";
-import { authenticateToken } from "../middleware/auth.js";
+import { authenticateToken, AuthRequest } from "../middleware/auth.js";
 import { dbService } from "../db/index.js";
+import { logger } from "../logger.js";
 import { GROQ_API_KEY } from "../config/env.js";
 import { validateBody } from "../middleware/validate.js";
 import { chatSchema } from "../validators/ai.schema.js";
@@ -18,18 +19,14 @@ import {
   detectUpcomingDeadlines,
   evaluateOutcomeMetrics
 } from "../piggy/core/piggyIntelligence.js";
-import { buildPiggyPrompt } from "../piggy/conversation/piggyPromptBuilder.js";
-import { formatPiggyResponse } from "../piggy/personality/piggyFormatter.js";
-import { transitionWorkflowState } from "../piggy/types/piggyWorkflow.js";
-import { executeAgentGoal } from "../piggy/execution/piggyExecutor.js";
-import { verifyResponse } from "../piggy/safety/piggyVerifier.js";
-import { scoreConfidence } from "../piggy/safety/piggyConfidence.js";
-import { runRetryLoop } from "../piggy/safety/piggyRetry.js";
-import { generateAndSaveReflection } from "../piggy/cognition/piggyReflection.js";
-import { parseAndSaveMemoryUpdates } from "../piggy/memory/piggyMemoryUpdater.js";
-import { autoTrackGoalProgress } from "../piggy/planning/piggyGoalTracker.js";
-import { runThinkingPipeline } from "../piggy/cognition/piggyThinking.js";
-import { runAutonomousAgentLoop } from "../piggy/background/piggyAutonomy.js";
+import { buildPiggyPrompt, formatPiggyResponse } from "../piggy/personality/agentPersonality.js";
+import { transitionWorkflowState } from "../piggy/types/agentTypes.js";
+import { executeAgentGoal } from "../piggy/execution/agentExecution.js";
+import { verifyResponse, scoreConfidence, runRetryLoop } from "../piggy/safety/agentSafety.js";
+import { generateAndSaveReflection, runThinkingPipeline } from "../piggy/cognition/agentCognition.js";
+import { parseAndSaveMemoryUpdates } from "../piggy/memory/agentMemory.js";
+import { autoTrackGoalProgress } from "../piggy/planning/agentPlanning.js";
+import { runAutonomousAgentLoop } from "../piggy/background/agentBackground.js";
 
 const router = express.Router();
 
@@ -66,14 +63,14 @@ function getDaysUntilDeadline(dateStr: string): number {
 }
 
 // --- J.A.R.V.I.S CHAT ---
-router.post("/api/jarvis/chat", authenticateToken, aiRateLimiter, validateBody(chatSchema), async (req: any, res: any) => {
+router.post("/api/jarvis/chat", authenticateToken, aiRateLimiter, validateBody(chatSchema), async (req: AuthRequest, res: Response) => {
   const { message, activeContext } = req.body;
 
   const startTime = Date.now();
   const db = dbService.getDatabaseState();
-  const userData = dbService.getUserData(req.user.id);
+  const userData = dbService.getUserData(req.user!.id);
 
-  console.log(`[PIPELINE START] Processing chat request: "${message}"`);
+  logger.info(`[PIPELINE START] Processing chat request: "${message}"`);
 
   // 1. Initial State: Idle -> Thinking
   transitionWorkflowState(userData, "Thinking");
@@ -185,7 +182,7 @@ router.post("/api/jarvis/chat", authenticateToken, aiRateLimiter, validateBody(c
 
     // 10. Pipeline Log & Summary metrics
     const executionDuration = Date.now() - startTime;
-    console.log(`[PIPELINE COMPLETE]
+    logger.info(`[PIPELINE COMPLETE]
   - Message: "${message}"
   - Execution Duration: ${executionDuration}ms
   - Reasoning Duration: ${reasoningTime}ms
@@ -209,7 +206,7 @@ router.post("/api/jarvis/chat", authenticateToken, aiRateLimiter, validateBody(c
     }
 
     // Save DB
-    db.userData[req.user.id] = userData;
+    db.userData[req.user!.id] = userData;
     dbService.saveDatabaseState(db);
 
     res.json({
@@ -229,7 +226,7 @@ router.post("/api/jarvis/chat", authenticateToken, aiRateLimiter, validateBody(c
     });
 
   } catch (error: any) {
-    console.error("Pipeline Error:", error);
+    logger.error("Pipeline Error:", error);
     transitionWorkflowState(userData, "Idle");
 
     let fallbackText = `Indeed, Sir. I am online and stand ready to assist your productivity cockpit. (Simulated Offline Mode)`;
@@ -245,9 +242,9 @@ router.post("/api/jarvis/chat", authenticateToken, aiRateLimiter, validateBody(c
 });
 
 // --- SMART PLANNING ENGINE ---
-router.post("/api/smart-planner", authenticateToken, async (req: any, res: any) => {
+router.post("/api/smart-planner", authenticateToken, async (req: AuthRequest, res: Response) => {
   const { workHours, sleepHours, personalPriorities, exercisePreference } = req.body;
-  const userData = dbService.getUserData(req.user.id);
+  const userData = dbService.getUserData(req.user!.id);
 
   const deadlines = detectUpcomingDeadlines(userData);
   const deadlinesText = deadlines.map((dl: any) => `- DEADLINE: "${dl.title}" in ${dl.daysLeft} days (Due: ${dl.dueDate}, Type: ${dl.type})`).join("\n");
@@ -288,23 +285,23 @@ Return response in JSON format matching this schema strictly:
     res.json({ success: true, plan: parsedData });
 
   } catch (error: any) {
-    console.error("Smart Planner Groq Error:", error.message);
+    logger.error("Smart Planner Groq Error:", error);
     res.json({ success: false, error: "Failed to generate plan." });
   }
 });
 
 // --- PREDICTIVE OUTCOMES ---
-router.post("/api/predictive-outcomes", authenticateToken, async (req: any, res: any) => {
+router.post("/api/predictive-outcomes", authenticateToken, async (req: AuthRequest, res: Response) => {
   const { primaryGoal, timeframeMonths } = req.body;
   if (!primaryGoal) return res.status(400).json({ error: "Goal is required." });
 
-  const userData = dbService.getUserData(req.user.id);
+  const userData = dbService.getUserData(req.user!.id);
   const currentStreak = Math.max(...userData.habits.map((h: any) => h.streak), 0);
   const tasksCompletedCount = userData.tasks.filter((t: any) => t.status === "completed").length;
   const tasksPendingCount = userData.tasks.filter((t: any) => t.status === "pending").length;
   const skippedCount = userData.tasks.reduce((sum: number, t: any) => sum + (t.rescheduledCount || 0), 0);
 
-  const basePrompt = `Analyze ${req.user.name}'s historical habits to forecast outcomes.
+  const basePrompt = `Analyze ${req.user!.name}'s historical habits to forecast outcomes.
 Parameters:
 - Goal: "${primaryGoal}"
 - Timeframe: ${timeframeMonths || 6} months
@@ -335,14 +332,14 @@ Return response in JSON format matching this schema:
     res.json({ success: true, forecast: parsedData });
 
   } catch (error: any) {
-    console.error("Predictive Engine Groq Error:", error.message);
+    logger.error("Predictive Engine Groq Error:", error);
     res.json({ success: false, error: "Failed to generate forecast." });
   }
 });
 
 // --- J.A.R.V.I.S BRIEF ENDPOINTS ---
-router.get("/api/jarvis/daily-brief", authenticateToken, async (req: any, res: any) => {
-  const userData = dbService.getUserData(req.user.id);
+router.get("/api/jarvis/daily-brief", authenticateToken, async (req: AuthRequest, res: Response) => {
+  const userData = dbService.getUserData(req.user!.id);
   const insights = [];
 
   const yesterday = new Date();
@@ -391,8 +388,8 @@ router.get("/api/jarvis/daily-brief", authenticateToken, async (req: any, res: a
   res.json({ insights, generatedAt: new Date().toISOString() });
 });
 
-router.get("/api/jarvis/morning-brief", authenticateToken, async (req: any, res: any) => {
-  const userData = dbService.getUserData(req.user.id);
+router.get("/api/jarvis/morning-brief", authenticateToken, async (req: AuthRequest, res: Response) => {
+  const userData = dbService.getUserData(req.user!.id);
 
   const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
   const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -414,13 +411,13 @@ router.get("/api/jarvis/morning-brief", authenticateToken, async (req: any, res:
   const sleepLog = userData.sleepLogs.find((s: any) => s.date === todayStr);
   const sleepText = sleepLog ? ` You logged ${sleepLog.duration} hours of sleep.` : "";
 
-  const briefText = `Good morning, ${req.user.name}. Today is ${dayName}, ${dateStr}.${sleepText} You have ${urgentTasks.length} urgent tasks on your deck. Your highest priority is "${topTask.title}". Your habit streak for "${longestStreakHabit.name}" is currently at ${longestStreakHabit.streak} days — let's keep it alive today. Your monthly budget is ${budgetPercent}% utilized, with $${remaining.toFixed(2)} remaining. Based on your behavioral patterns, your peak focus window starts at ${getPeakHours(userData.userPatterns).split(" ")[0]}. Shall we build your schedule for today?`;
+  const briefText = `Good morning, ${req.user!.name}. Today is ${dayName}, ${dateStr}.${sleepText} You have ${urgentTasks.length} urgent tasks on your deck. Your highest priority is "${topTask.title}". Your habit streak for "${longestStreakHabit.name}" is currently at ${longestStreakHabit.streak} days — let's keep it alive today. Your monthly budget is ${budgetPercent}% utilized, with $${remaining.toFixed(2)} remaining. Based on your behavioral patterns, your peak focus window starts at ${getPeakHours(userData.userPatterns).split(" ")[0]}. Shall we build your schedule for today?`;
 
   res.json({ briefText, generatedAt: new Date().toISOString() });
 });
 
-router.get("/api/analytics/weekly-review", authenticateToken, async (req: any, res: any) => {
-  const userData = dbService.getUserData(req.user.id);
+router.get("/api/analytics/weekly-review", authenticateToken, async (req: AuthRequest, res: Response) => {
+  const userData = dbService.getUserData(req.user!.id);
 
   // Calculate past 7 days dates
   const dates: string[] = [];
@@ -504,7 +501,7 @@ Keep it strictly under 3 sentences. Do not use markdown format.`;
     });
     piggyInsight = response.choices?.[0]?.message?.content || piggyInsight;
   } catch (error: any) {
-    console.error("Weekly review insight AI error:", error.message);
+    logger.error("Weekly review insight AI error:", error);
   }
 
   res.json({
@@ -710,7 +707,7 @@ Keep it extremely concise (under 4 sentences), starting with 'Today:' and using 
     });
     reflectionText = response.choices?.[0]?.message?.content || reflectionText;
   } catch (error: any) {
-    console.error("Reflection Generation Error:", error.message);
+    logger.error("Reflection Generation Error:", error);
   }
 
   const reflection = {

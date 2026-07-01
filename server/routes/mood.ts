@@ -1,17 +1,17 @@
-import express from 'express';
-import { authenticateToken } from '../middleware/auth.js';
+import express, { Response } from 'express';
+import { authenticateToken, AuthRequest } from '../middleware/auth.js';
 import { readDB, getUserData, writeDB } from '../db/index.js';
 import { validateBody } from '../middleware/validate.js';
 import { moodSchema } from '../validators/mood.schema.js';
 
 const router = express.Router();
 
-router.post("/api/mood", authenticateToken, validateBody(moodSchema), (req: any, res: any) => {
+router.post("/api/mood", authenticateToken, validateBody(moodSchema), (req: AuthRequest, res: Response) => {
   try {
     const { mood, note } = req.body;
 
     const db = readDB();
-    const userData = getUserData(db, req.user.id);
+    const userData = getUserData(db, req.user!.id);
 
     if (!userData.moods) userData.moods = [];
 
@@ -31,10 +31,10 @@ router.post("/api/mood", authenticateToken, validateBody(moodSchema), (req: any,
   }
 });
 
-router.get("/api/mood/today", authenticateToken, (req: any, res: any) => {
+router.get("/api/mood/today", authenticateToken, (req: AuthRequest, res: Response) => {
   try {
     const db = readDB();
-    const userData = getUserData(db, req.user.id);
+    const userData = getUserData(db, req.user!.id);
     const today = new Date().toISOString().slice(0, 10);
     const mood = userData.moods?.find((m: any) => m.createdAt.startsWith(today));
     return res.json(mood || null);

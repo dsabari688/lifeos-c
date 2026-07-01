@@ -1,8 +1,7 @@
 import app, { configureStaticAssets } from "./app.js";
 import { env } from "./security/index.js";
 import { dbService } from "./db/index.js";
-import { startBackgroundAgent } from "./piggy/background/piggyBackground.js";
-import { initializeScheduler } from "./piggy/background/piggyScheduler.js";
+import { startBackgroundAgent, initializeScheduler } from "./piggy/background/agentBackground.js";
 import { startJobs } from "./jobs/scheduler.js";
 import { logger } from "./logger.js";
 

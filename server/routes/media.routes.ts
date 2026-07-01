@@ -1,11 +1,12 @@
-import express from "express";
+import express, { Response } from "express";
 import path from "path";
 import fs from "fs";
 import OpenAI from "openai";
-import { authenticateToken } from "../middleware/auth.js";
+import { authenticateToken, AuthRequest } from "../middleware/auth.js";
 import { dbService } from "../db/index.js";
 import { GROQ_API_KEY } from "../config/env.js";
 import { secureImageUpload, secureVideoUpload } from "../middleware/uploadValidator.js";
+import { logger } from "../logger.js";
 
 const router = express.Router();
 
@@ -25,23 +26,23 @@ function getOpenAI(): OpenAI {
 }
 
 // --- PROFILE AVATAR ---
-router.post("/api/profile/avatar", authenticateToken, secureImageUpload.single("avatar"), (req: any, res: any) => {
+router.post("/api/profile/avatar", authenticateToken, secureImageUpload.single("avatar"), (req: AuthRequest, res: Response) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
   const avatarUrl = `/uploads/avatars/${req.file.filename}`;
   
   const db = dbService.getDatabaseState();
-  const user = db.users?.find((u: any) => u.id === req.user.id);
+  const user = db.users?.find((u: any) => u.id === req.user!.id);
   if (user) {
     user.avatarUrl = avatarUrl;
     dbService.saveDatabaseState(db);
-    dbService.updateProfile(req.user.id, { avatar: avatarUrl });
+    dbService.updateProfile(req.user!.id, { avatar: avatarUrl });
   }
   
   res.json({ avatarUrl });
 });
 
 // --- RECEIPT VISION SCANNER ---
-router.post("/api/expenses/scan-receipt", authenticateToken, secureImageUpload.single("receipt"), async (req: any, res: any) => {
+router.post("/api/expenses/scan-receipt", authenticateToken, secureImageUpload.single("receipt"), async (req: AuthRequest, res: Response) => {
   if (!req.file) {
     return res.status(400).json({ error: "No receipt image uploaded." });
   }
@@ -77,7 +78,7 @@ router.post("/api/expenses/scan-receipt", authenticateToken, secureImageUpload.s
     res.json(parsed);
 
   } catch (error: any) {
-    console.error("Receipt Scan Groq Error:", error.message);
+    logger.error("Receipt Scan Groq Error:", error);
     const fallbackScan = {
       amount: 24.50,
       merchant: "LifeOS Scanner (Offline)",
@@ -90,7 +91,7 @@ router.post("/api/expenses/scan-receipt", authenticateToken, secureImageUpload.s
 });
 
 // --- TRACKNET VISION BRIDGE ---
-router.post("/api/vision/track", authenticateToken, secureVideoUpload.single("video"), async (req: any, res: any) => {
+router.post("/api/vision/track", authenticateToken, secureVideoUpload.single("video"), async (req: AuthRequest, res: Response) => {
   if (!req.file) return res.status(400).json({ error: "No video payload detected." });
 
   try {
@@ -107,7 +108,7 @@ router.post("/api/vision/track", authenticateToken, secureVideoUpload.single("vi
     const result = await pythonResponse.json();
     res.json(result);
   } catch (error: any) {
-    console.error("TrackNet Communication Failure:", error.message);
+    logger.error("TrackNet Communication Failure:", error);
     res.status(500).json({ error: "Visual cortex offline or unreachable." });
   }
 });

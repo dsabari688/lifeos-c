@@ -1,5 +1,5 @@
-import express from "express";
-import { authenticateToken } from "../middleware/auth.js";
+import express, { Response } from "express";
+import { authenticateToken, AuthRequest } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
 import { dbService } from "../db/index.js";
 import { repository } from "../db/repository.js";
@@ -8,7 +8,7 @@ import { smartCache } from "../db/cache.js";
 
 const router = express.Router();
 
-router.get("/api/admin/metrics", authenticateToken, authorize("Admin"), (req: any, res: any) => {
+router.get("/api/admin/metrics", authenticateToken, authorize("Admin"), (req: AuthRequest, res: Response) => {
   const db = dbService.getDatabaseState();
   const totalUsers = db.users?.length || 0;
   const activeUserData = Object.keys(db.userData || {}).length;
@@ -32,7 +32,7 @@ router.get("/api/admin/metrics", authenticateToken, authorize("Admin"), (req: an
   });
 });
 
-router.post("/api/admin/backup", authenticateToken, authorize("Admin"), async (req: any, res: any) => {
+router.post("/api/admin/backup", authenticateToken, authorize("Admin"), async (req: AuthRequest, res: Response) => {
   try {
     const backupPath = await repository.runBackup();
     res.json({ success: true, message: `Backup created successfully at ${backupPath}` });
