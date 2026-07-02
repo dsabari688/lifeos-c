@@ -9,15 +9,33 @@ export { defaultData };
 
 export class DatabaseService {
   /**
-   * Helper to perform a read-modify-write operation on UserData
+   * Helper to perform a read-modify-write operation on UserData.
+   * Now async so write errors surface to callers.
    */
-  private updateUserDataInternal(userId: string, modifier: (userData: UserData) => void): UserData {
-    const userData = repository.getUserData(userId);
-    modifier(userData);
-    repository.saveUserData(userId, userData);
-    return userData;
-  }
+  // 🚦 This line creates a waiting line (queue) for each user so they don't overwrite each other
+  private userWriteQueues = new Map<string, Promise<any>>();
 
+  private async updateUserDataInternal(userId: string, modifier: (userData: UserData) => void): Promise<UserData> {
+    // 1. Find the current waiting line for this user
+    const currentQueue = this.userWriteQueues.get(userId) || Promise.resolve();
+
+    // 2. Add our new update to the back of the line
+    const nextTask = currentQueue.then(async () => {
+      const userData = repository.getUserData(userId); // Always gets the freshest data!
+      modifier(userData);
+      await repository.saveUserData(userId, userData);
+      return userData;
+    }).catch((err) => {
+      logger.error(`Write error for user ${userId}`, err);
+      throw err;
+    });
+
+    // 3. Update the line so the next person waits for us
+    this.userWriteQueues.set(userId, nextTask);
+
+    // 4. Return the result when our turn is done
+    return nextTask;
+  }
   // --- USER PERSISTENCE ---
   public getUserData(userId: string): UserData {
     return repository.getUserData(userId);
@@ -31,17 +49,17 @@ export class DatabaseService {
     return repository.read();
   }
 
-  public saveDatabaseState(state: DatabaseState): void {
-    repository.write(state);
-    // Invalidate caches for all modified users if applicable
+  public async saveDatabaseState(state: DatabaseState): Promise<void> {
+    await repository.write(state);
+    // Invalidate caches for all modified users
     state.users.forEach((user) => {
       smartCache.invalidateUser(user.id);
     });
   }
 
   // --- USER PROFILE ---
-  public updateProfile(userId: string, profile: any): any {
-    const updated = this.updateUserDataInternal(userId, (data) => {
+  public async updateProfile(userId: string, profile: any): Promise<any> {
+    const updated = await this.updateUserDataInternal(userId, (data) => {
       data.profile = { ...data.profile, ...profile };
     });
     smartCache.invalidate(userId, "dashboard");
@@ -60,9 +78,9 @@ export class DatabaseService {
     return tasks;
   }
 
-  public saveTask(userId: string, task: any): any {
+  public async saveTask(userId: string, task: any): Promise<any> {
     let savedTask = { ...task };
-    this.updateUserDataInternal(userId, (data) => {
+    await this.updateUserDataInternal(userId, (data) => {
       if (!data.tasks) data.tasks = [];
       const index = data.tasks.findIndex((t: any) => t.id === task.id);
       if (index > -1) {
@@ -82,8 +100,8 @@ export class DatabaseService {
     return savedTask;
   }
 
-  public deleteTask(userId: string, taskId: string): void {
-    this.updateUserDataInternal(userId, (data) => {
+  public async deleteTask(userId: string, taskId: string): Promise<void> {
+    await this.updateUserDataInternal(userId, (data) => {
       if (data.tasks) {
         data.tasks = data.tasks.filter((t: any) => t.id !== taskId);
       }
@@ -104,9 +122,9 @@ export class DatabaseService {
     return habits;
   }
 
-  public saveHabit(userId: string, habit: any): any {
+  public async saveHabit(userId: string, habit: any): Promise<any> {
     let savedHabit = { ...habit };
-    this.updateUserDataInternal(userId, (data) => {
+    await this.updateUserDataInternal(userId, (data) => {
       if (!data.habits) data.habits = [];
       const index = data.habits.findIndex((h: any) => h.id === habit.id);
       if (index > -1) {
@@ -126,8 +144,8 @@ export class DatabaseService {
     return savedHabit;
   }
 
-  public deleteHabit(userId: string, habitId: string): void {
-    this.updateUserDataInternal(userId, (data) => {
+  public async deleteHabit(userId: string, habitId: string): Promise<void> {
+    await this.updateUserDataInternal(userId, (data) => {
       if (data.habits) {
         data.habits = data.habits.filter((h: any) => h.id !== habitId);
       }
@@ -148,9 +166,9 @@ export class DatabaseService {
     return goals;
   }
 
-  public saveGoal(userId: string, goal: any): any {
+  public async saveGoal(userId: string, goal: any): Promise<any> {
     let savedGoal = { ...goal };
-    this.updateUserDataInternal(userId, (data) => {
+    await this.updateUserDataInternal(userId, (data) => {
       if (!data.goals) data.goals = [];
       const index = data.goals.findIndex((g: any) => g.id === goal.id);
       if (index > -1) {
@@ -170,8 +188,8 @@ export class DatabaseService {
     return savedGoal;
   }
 
-  public deleteGoal(userId: string, goalId: string): void {
-    this.updateUserDataInternal(userId, (data) => {
+  public async deleteGoal(userId: string, goalId: string): Promise<void> {
+    await this.updateUserDataInternal(userId, (data) => {
       if (data.goals) {
         data.goals = data.goals.filter((g: any) => g.id !== goalId);
       }
@@ -192,9 +210,9 @@ export class DatabaseService {
     return expenses;
   }
 
-  public saveExpense(userId: string, expense: any): any {
+  public async saveExpense(userId: string, expense: any): Promise<any> {
     let savedExpense = { ...expense };
-    this.updateUserDataInternal(userId, (data) => {
+    await this.updateUserDataInternal(userId, (data) => {
       if (!data.expenses) data.expenses = [];
       const index = data.expenses.findIndex((e: any) => e.id === expense.id);
       if (index > -1) {
@@ -220,8 +238,8 @@ export class DatabaseService {
     return data.budgets || [];
   }
 
-  public saveBudget(userId: string, category: string, limit: number): any[] {
-    const data = this.updateUserDataInternal(userId, (userData) => {
+  public async saveBudget(userId: string, category: string, limit: number): Promise<any[]> {
+    const data = await this.updateUserDataInternal(userId, (userData) => {
       if (!userData.budgets) userData.budgets = [];
       const index = userData.budgets.findIndex((b: any) => b.category === category);
       if (index > -1) {
@@ -246,8 +264,8 @@ export class DatabaseService {
     return sleepLogs;
   }
 
-  public saveSleepLog(userId: string, log: any): any {
-    this.updateUserDataInternal(userId, (data) => {
+  public async saveSleepLog(userId: string, log: any): Promise<any> {
+    await this.updateUserDataInternal(userId, (data) => {
       if (!data.sleepLogs) data.sleepLogs = [];
       const index = data.sleepLogs.findIndex((s: any) => s.date === log.date);
       if (index > -1) {
@@ -274,9 +292,9 @@ export class DatabaseService {
     return moods;
   }
 
-  public saveMoodLog(userId: string, moodLog: any): any {
+  public async saveMoodLog(userId: string, moodLog: any): Promise<any> {
     let savedMood = { ...moodLog };
-    this.updateUserDataInternal(userId, (data) => {
+    await this.updateUserDataInternal(userId, (data) => {
       if (!data.moods) data.moods = [];
       if (!moodLog.id) {
         savedMood.id = `mood-${Date.now()}`;
@@ -292,13 +310,12 @@ export class DatabaseService {
 
   // --- REFLECTIONS ---
   public getReflections(userId: string): any[] {
-    // Reflections are lazy loaded, no cache necessary but fetched dynamically
     const data = repository.getUserData(userId);
     return data.reflections || [];
   }
 
-  public saveReflection(userId: string, reflection: any): any {
-    this.updateUserDataInternal(userId, (data) => {
+  public async saveReflection(userId: string, reflection: any): Promise<any> {
+    await this.updateUserDataInternal(userId, (data) => {
       if (!data.reflections) data.reflections = [];
       data.reflections.push(reflection);
     });
@@ -314,17 +331,16 @@ export class DatabaseService {
     return data.chatHistory || [];
   }
 
-  public saveChatHistory(userId: string, chatHistory: any[]): void {
-    this.updateUserDataInternal(userId, (data) => {
+  public async saveChatHistory(userId: string, chatHistory: any[]): Promise<void> {
+    await this.updateUserDataInternal(userId, (data) => {
       data.chatHistory = chatHistory;
     });
-    // Invalidate piggyContext as chat events modify active states
     smartCache.invalidate(userId, "piggyContext");
   }
 
   // --- NOTIFICATIONS ---
-  public addNotification(userId: string, notification: any): any {
-    this.updateUserDataInternal(userId, (data) => {
+  public async addNotification(userId: string, notification: any): Promise<any> {
+    await this.updateUserDataInternal(userId, (data) => {
       if (!data.notifications) data.notifications = [];
       data.notifications.unshift(notification);
     });
@@ -333,8 +349,8 @@ export class DatabaseService {
     return notification;
   }
 
-  public clearUnreadNotifications(userId: string): void {
-    this.updateUserDataInternal(userId, (data) => {
+  public async clearUnreadNotifications(userId: string): Promise<void> {
+    await this.updateUserDataInternal(userId, (data) => {
       if (data.notifications) {
         data.notifications.forEach((n: any) => {
           n.read = true;
@@ -351,8 +367,8 @@ export class DatabaseService {
     return data.userPatterns;
   }
 
-  public saveUserPatterns(userId: string, patterns: any): void {
-    this.updateUserDataInternal(userId, (data) => {
+  public async saveUserPatterns(userId: string, patterns: any): Promise<void> {
+    await this.updateUserDataInternal(userId, (data) => {
       data.userPatterns = patterns;
     });
     smartCache.invalidate(userId, "dashboard");
@@ -387,8 +403,8 @@ export function readDB(): DatabaseState {
   return repository.read();
 }
 
-export function writeDB(state: DatabaseState): void {
-  repository.write(state);
+export async function writeDB(state: DatabaseState): Promise<void> {
+  await repository.write(state);
 }
 
 export function getUserData(db: DatabaseState, userId: string): UserData {

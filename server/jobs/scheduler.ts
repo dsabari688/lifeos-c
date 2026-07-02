@@ -9,7 +9,7 @@ export function startJobs() {
   logger.info("Initializing scheduled background jobs...");
 
   // Daily habit conformance checklist nudges running at 9 PM (21:00) every day
-  cron.schedule("0 21 * * *", () => {
+  cron.schedule("0 21 * * *", async () => {
     logger.info("[LifeOS Cron] Running daily habit conformance checklist at 21:00...");
     const db = dbService.getDatabaseState();
     const todayStr = new Date().toISOString().split("T")[0];
@@ -40,7 +40,7 @@ export function startJobs() {
     });
 
     if (changes) {
-      dbService.saveDatabaseState(db);
+      await dbService.saveDatabaseState(db);
       logger.info("[LifeOS Cron] Daily review streak risk warnings deployed.");
     } else {
       logger.info("[LifeOS Cron] Daily checklist run completed: no actions required.");

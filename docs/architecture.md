@@ -2,6 +2,8 @@
 
 This document provides a comprehensive overview of the design, security, reliability, and observability patterns implemented in the LifeOS personal cockpit and Piggy AI Core.
 
+> **Note:** Planned changes are tracked in [roadmap.md](./roadmap.md) and [phases/](./phases/). Update this document in **Phase 8** after refactors land.
+
 ---
 
 ## 1. System Topology

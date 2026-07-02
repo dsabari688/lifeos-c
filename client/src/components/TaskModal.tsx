@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from "react";
-import { X, Calendar, Clock, AlertCircle } from "lucide-react";
 import { Task, TaskPriority } from "../types";
+
+const CloseIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path strokeLinecap="round" d="M16 3v4M8 3v4M3 10h18" />
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+    <circle cx="12" cy="12" r="9" />
+    <path strokeLinecap="round" d="M12 7v5l3 2" />
+  </svg>
+);
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -74,7 +93,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, i
             onClick={onClose} 
             className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <CloseIcon />
           </button>
         </div>
 
@@ -131,7 +150,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, i
                 Execution Date
               </label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                <div className="absolute left-3 top-3 text-slate-400">
+                  <CalendarIcon />
+                </div>
                 <input
                   type="date"
                   required
@@ -147,7 +168,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, i
                 Time Block
               </label>
               <div className="relative">
-                <Clock className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                <div className="absolute left-3 top-3 text-slate-400">
+                  <ClockIcon />
+                </div>
                 <input
                   type="time"
                   required

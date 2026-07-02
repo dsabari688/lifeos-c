@@ -7,7 +7,7 @@ function getRelativeDateString(daysOffset: number): string {
 }
 
 export class ExpenseService {
-  public static addExpense(userId: string, body: any): { expense: any; requiresExplanation: boolean; totalSpend: number; notification: any | null } {
+  public static async addExpense(userId: string, body: any): Promise<{ expense: any; requiresExplanation: boolean; totalSpend: number; notification: any | null }> {
     const db = dbService.getDatabaseState() as any;
     const userData = dbService.getUserData(userId);
     const category = body.category || "misc";
@@ -65,12 +65,12 @@ export class ExpenseService {
     userData.userPatterns.spendingByCategory[category] = (userData.userPatterns.spendingByCategory[category] || 0) + amount;
 
     db.userData[userId] = userData;
-    dbService.saveDatabaseState(db);
+    await dbService.saveDatabaseState(db);
 
     return { expense: newExpense, requiresExplanation, totalSpend: totalCategorySpend, notification };
   }
 
-  public static explainExpense(userId: string, expenseId: string, explanation: string): any {
+  public static async explainExpense(userId: string, expenseId: string, explanation: string): Promise<any> {
     const db = dbService.getDatabaseState() as any;
     const userData = dbService.getUserData(userId);
     const expense = userData.expenses.find((e: any) => e.id === expenseId);
@@ -82,7 +82,7 @@ export class ExpenseService {
     expense.explanation = explanation || "No explanation provided.";
 
     db.userData[userId] = userData;
-    dbService.saveDatabaseState(db);
+    await dbService.saveDatabaseState(db);
     return expense;
   }
 

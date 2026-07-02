@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import dotenv from "dotenv";
 import path from "path";
 
@@ -14,7 +15,10 @@ export const SMTP = {
 
 export const PORT = parseInt(process.env.PORT || "5001", 10);
 
-export const DB_FILE = path.join(process.cwd(), "lifeos_db.json");
+export const DB_FILE = process.env.DB_FILE
+  ? path.resolve(process.env.DB_FILE)
+  : path.join(process.cwd(), "lifeos_db.json");
+
 
 export const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 

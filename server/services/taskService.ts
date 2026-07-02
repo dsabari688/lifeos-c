@@ -7,7 +7,8 @@ function getRelativeDateString(daysOffset: number): string {
 }
 
 export class TaskService {
-  public static createTask(userId: string, body: any): any {
+  // 1. Changed to 'public static async'
+  public static async createTask(userId: string, body: any): Promise<any> {
     const newTask = {
       id: `task-${Date.now()}`,
       title: body.title || "Untitled Task",
@@ -18,11 +19,13 @@ export class TaskService {
       status: body.status || "pending",
       rescheduledCount: 0
     };
-    dbService.saveTask(userId, newTask);
+    
+    // 2. Added 'await' so the server waits for the save to finish!
+    await dbService.saveTask(userId, newTask);
     return newTask;
   }
 
-  public static updateTask(userId: string, taskId: string, body: any): { task: any; notification: any | null } {
+  public static async updateTask(userId: string, taskId: string, body: any): Promise<{ task: any; notification: any | null }> {
     const db = dbService.getDatabaseState() as any;
     const userData = dbService.getUserData(userId);
     const index = userData.tasks.findIndex((t: any) => t.id === taskId);
@@ -81,7 +84,7 @@ export class TaskService {
     }
 
     db.userData[userId] = userData;
-    dbService.saveDatabaseState(db);
+    await dbService.saveDatabaseState(db);
     return { task: userData.tasks[index], notification };
   }
 

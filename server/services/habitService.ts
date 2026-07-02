@@ -21,7 +21,7 @@ export class HabitService {
     return newHabit;
   }
 
-  public static toggleHabit(userId: string, habitId: string, body: any): { habit: any; notification: any | null } {
+  public static async toggleHabit(userId: string, habitId: string, body: any): Promise<{ habit: any; notification: any | null }> {
     const db = dbService.getDatabaseState() as any;
     const userData = dbService.getUserData(userId);
     const habit = userData.habits.find((h: any) => h.id === habitId);
@@ -83,7 +83,7 @@ export class HabitService {
     }
 
     db.userData[userId] = userData;
-    dbService.saveDatabaseState(db);
+    await dbService.saveDatabaseState(db);
     return { habit, notification };
   }
 

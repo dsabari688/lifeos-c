@@ -5,6 +5,7 @@ import {
   Moon, Smile, Award as TrophyIcon, RefreshCw as LoopIcon
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { useStore } from "../store/useStore";
 
 interface AIDashboardViewProps {
   token: string | null;
@@ -12,6 +13,7 @@ interface AIDashboardViewProps {
 }
 
 export const AIDashboardView: React.FC<AIDashboardViewProps> = ({ token, profileName }) => {
+  const { osData } = useStore();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [coachingData, setCoachingData] = useState<any>(null);
@@ -19,7 +21,16 @@ export const AIDashboardView: React.FC<AIDashboardViewProps> = ({ token, profile
   const [generatingReflection, setGeneratingReflection] = useState(false);
   const [activeTab, setActiveTab] = useState<"cockpit" | "habits" | "coaching" | "diary" | "achievements" | "memory">("cockpit");
 
-  const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const buildJsonHeaders = () => {
+    const requestHeaders = new Headers(headers);
+    requestHeaders.set("Content-Type", "application/json");
+    return requestHeaders;
+  };
 
   const fetchAllData = async () => {
     if (!token) return;
@@ -58,10 +69,7 @@ export const AIDashboardView: React.FC<AIDashboardViewProps> = ({ token, profile
       setGeneratingReflection(true);
       const res = await fetch("/api/piggy/reflection/generate", {
         method: "POST",
-        headers: {
-          ...headers,
-          "Content-Type": "application/json"
-        }
+        headers: buildJsonHeaders()
       });
       const data = await res.json();
       if (data.success) {
@@ -253,10 +261,7 @@ export const AIDashboardView: React.FC<AIDashboardViewProps> = ({ token, profile
                             try {
                               const res = await fetch("/api/piggy/feedback", {
                                 method: "POST",
-                                headers: {
-                                  ...headers,
-                                  "Content-Type": "application/json"
-                                },
+                                headers: buildJsonHeaders(),
                                 body: JSON.stringify({
                                   text: h.risk.recommendation,
                                   type: "habit_timing",
@@ -280,10 +285,7 @@ export const AIDashboardView: React.FC<AIDashboardViewProps> = ({ token, profile
                             try {
                               const res = await fetch("/api/piggy/feedback", {
                                 method: "POST",
-                                headers: {
-                                  ...headers,
-                                  "Content-Type": "application/json"
-                                },
+                                headers: buildJsonHeaders(),
                                 body: JSON.stringify({
                                   text: h.risk.recommendation,
                                   type: "habit_timing",
@@ -739,10 +741,7 @@ export const AIDashboardView: React.FC<AIDashboardViewProps> = ({ token, profile
                 try {
                   const res = await fetch("/api/piggy/memory", {
                     method: "POST",
-                    headers: {
-                      ...headers,
-                      "Content-Type": "application/json"
-                    },
+                    headers: buildJsonHeaders(),
                     body: JSON.stringify({ fact, category })
                   });
                   const data = await res.json();

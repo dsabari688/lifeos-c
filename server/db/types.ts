@@ -45,9 +45,9 @@ export interface MetricsData {
 
 export interface IRepository {
   read(): DatabaseState;
-  write(data: DatabaseState): void;
+  write(data: DatabaseState): Promise<void>;
   getUserData(userId: string): UserData;
   getUserDataSummary(userId: string): Partial<UserData>;
-  saveUserData(userId: string, data: UserData): void;
+  saveUserData(userId: string, data: UserData): Promise<void>;
   runBackup(): Promise<string>;
 }

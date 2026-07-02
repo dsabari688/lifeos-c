@@ -1,0 +1,1049 @@
+{
+  "users": [],
+  "userData": {
+    "test-user-123": {
+      "profile": {
+        "name": "New User",
+        "email": "",
+        "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+        "budgetLimit": 1200,
+        "aiPersonality": "Logical",
+        "dailyPlanningReminderTime": "21:00",
+        "hasPlannedTomorrow": false,
+        "listeningMode": "push-to-talk",
+        "proactiveModeEnabled": true,
+        "maxProactiveNudges": 2,
+        "dailyReviewTime": "21:30",
+        "learnedPatterns": [
+          "Peak cognitive focus observed between 19:00 - 22:00 hours for coding studies.",
+          "Skipping morning cardio blocks exhibits an 18% average reduction in task consistency index.",
+          "Late-night eating category shows high susceptibility to emotional impulse buys (average $38/spend).",
+          "Goal streak consistency rises by 42% when tasks are completed prior to 20:00 hours."
+        ]
+      },
+      "tasks": [
+        {
+          "id": "task-1",
+          "title": "First Task",
+          "category": "urgent-important",
+          "date": "2026-07-01",
+          "time": "09:30",
+          "recurType": "none",
+          "status": "pending",
+          "rescheduledCount": 0
+        },
+        {
+          "id": "task-2",
+          "title": "Second Task",
+          "category": "important-not-urgent",
+          "date": "2026-07-01",
+          "time": "08:00",
+          "recurType": "none",
+          "status": "completed",
+          "rescheduledCount": 0
+        },
+        {
+          "id": "task-3",
+          "title": "Read 20 pages of clean coder book",
+          "category": "important-not-urgent",
+          "date": "2026-07-01",
+          "time": "20:30",
+          "recurType": "none",
+          "status": "pending",
+          "rescheduledCount": 0
+        },
+        {
+          "id": "task-4",
+          "title": "Refactor API state cache variables",
+          "category": "urgent-important",
+          "date": "2026-07-01",
+          "time": "11:00",
+          "recurType": "none",
+          "status": "completed",
+          "rescheduledCount": 0
+        },
+        {
+          "id": "task-5",
+          "title": "Review weekend financial expenses audit",
+          "category": "urgent-not-important",
+          "date": "2026-07-01",
+          "time": "18:00",
+          "recurType": "none",
+          "status": "pending",
+          "rescheduledCount": 1
+        }
+      ],
+      "habits": [
+        {
+          "id": "habit-exercise",
+          "name": "Exercise Workout",
+          "frequency": "daily",
+          "streak": 16,
+          "logs": [
+            "2026-06-01",
+            "2026-06-02",
+            "2026-06-03",
+            "2026-06-04",
+            "2026-06-05",
+            "2026-06-06",
+            "2026-06-08",
+            "2026-06-09",
+            "2026-06-10",
+            "2026-06-11",
+            "2026-06-12",
+            "2026-06-13",
+            "2026-06-15",
+            "2026-06-16",
+            "2026-06-17",
+            "2026-06-18",
+            "2026-06-19",
+            "2026-06-20",
+            "2026-06-22",
+            "2026-06-23",
+            "2026-06-24",
+            "2026-06-25",
+            "2026-06-26",
+            "2026-06-27",
+            "2026-06-29",
+            "2026-06-30",
+            "2026-07-01"
+          ],
+          "logTimes": [
+            "2026-06-01T02:32:34.700Z",
+            "2026-06-02T02:43:34.700Z",
+            "2026-06-03T02:33:34.700Z",
+            "2026-06-04T03:06:34.700Z",
+            "2026-06-05T03:10:34.700Z",
+            "2026-06-06T03:05:34.700Z",
+            "2026-06-08T03:18:34.700Z",
+            "2026-06-09T02:39:34.700Z",
+            "2026-06-10T03:04:34.700Z",
+            "2026-06-11T02:57:34.700Z",
+            "2026-06-12T03:02:34.700Z",
+            "2026-06-13T02:54:34.700Z",
+            "2026-06-15T02:44:34.700Z",
+            "2026-06-16T02:50:34.700Z",
+            "2026-06-17T03:01:34.700Z",
+            "2026-06-18T02:50:34.700Z",
+            "2026-06-19T02:51:34.700Z",
+            "2026-06-20T02:56:34.700Z",
+            "2026-06-22T02:54:34.700Z",
+            "2026-06-23T02:31:34.700Z",
+            "2026-06-24T02:54:34.700Z",
+            "2026-06-25T02:44:34.700Z",
+            "2026-06-26T03:26:34.700Z",
+            "2026-06-27T02:55:34.700Z",
+            "2026-06-29T02:54:34.700Z",
+            "2026-06-30T02:45:34.700Z",
+            "2026-07-01T03:26:34.700Z"
+          ],
+          "skippedDaysCount": 4,
+          "icon": "dumbbell"
+        },
+        {
+          "id": "habit-reading",
+          "name": "Read 20 Pages",
+          "frequency": "daily",
+          "streak": 24,
+          "logs": [
+            "2026-06-01",
+            "2026-06-02",
+            "2026-06-03",
+            "2026-06-04",
+            "2026-06-05",
+            "2026-06-06",
+            "2026-06-07",
+            "2026-06-08",
+            "2026-06-09",
+            "2026-06-10",
+            "2026-06-11",
+            "2026-06-12",
+            "2026-06-13",
+            "2026-06-14",
+            "2026-06-15",
+            "2026-06-16",
+            "2026-06-17",
+            "2026-06-18",
+            "2026-06-19",
+            "2026-06-20",
+            "2026-06-21",
+            "2026-06-22",
+            "2026-06-23",
+            "2026-06-24",
+            "2026-06-25",
+            "2026-06-26",
+            "2026-06-27",
+            "2026-06-28",
+            "2026-06-29",
+            "2026-06-30"
+          ],
+          "logTimes": [
+            "2026-06-01T15:26:34.700Z",
+            "2026-06-02T15:28:34.700Z",
+            "2026-06-03T15:19:34.700Z",
+            "2026-06-04T15:03:34.700Z",
+            "2026-06-05T14:50:34.700Z",
+            "2026-06-06T14:48:34.700Z",
+            "2026-06-07T14:57:34.700Z",
+            "2026-06-08T15:10:34.700Z",
+            "2026-06-09T14:55:34.700Z",
+            "2026-06-10T14:48:34.700Z",
+            "2026-06-11T14:40:34.700Z",
+            "2026-06-12T14:52:34.700Z",
+            "2026-06-13T15:00:34.700Z",
+            "2026-06-14T14:32:34.700Z",
+            "2026-06-15T15:08:34.700Z",
+            "2026-06-16T15:06:34.700Z",
+            "2026-06-17T15:00:34.700Z",
+            "2026-06-18T14:38:34.700Z",
+            "2026-06-19T14:49:34.700Z",
+            "2026-06-20T15:08:34.700Z",
+            "2026-06-21T15:05:34.700Z",
+            "2026-06-22T14:49:34.700Z",
+            "2026-06-23T15:26:34.700Z",
+            "2026-06-24T14:31:34.700Z",
+            "2026-06-25T15:02:34.700Z",
+            "2026-06-26T14:53:34.700Z",
+            "2026-06-27T14:41:34.700Z",
+            "2026-06-28T15:11:34.700Z",
+            "2026-06-29T15:02:34.700Z",
+            "2026-06-30T15:12:34.700Z"
+          ],
+          "skippedDaysCount": 2,
+          "icon": "book-open"
+        },
+        {
+          "id": "habit-meditation",
+          "name": "Mindfulness Meditation",
+          "frequency": "daily",
+          "streak": 12,
+          "logs": [
+            "2026-06-01",
+            "2026-06-03",
+            "2026-06-04",
+            "2026-06-08",
+            "2026-06-09",
+            "2026-06-10",
+            "2026-06-11",
+            "2026-06-12",
+            "2026-06-14",
+            "2026-06-15",
+            "2026-06-17",
+            "2026-06-18",
+            "2026-06-19",
+            "2026-06-20",
+            "2026-06-21",
+            "2026-06-22",
+            "2026-06-23",
+            "2026-06-24",
+            "2026-06-28",
+            "2026-06-30"
+          ],
+          "logTimes": [
+            "2026-06-01T09:48:34.700Z",
+            "2026-06-03T09:30:34.700Z",
+            "2026-06-04T09:49:34.700Z",
+            "2026-06-08T09:58:34.700Z",
+            "2026-06-09T10:19:34.700Z",
+            "2026-06-10T10:17:34.700Z",
+            "2026-06-11T09:49:34.700Z",
+            "2026-06-12T09:37:34.700Z",
+            "2026-06-14T09:49:34.700Z",
+            "2026-06-15T09:47:34.700Z",
+            "2026-06-17T09:53:34.700Z",
+            "2026-06-18T10:07:34.700Z",
+            "2026-06-19T10:01:34.700Z",
+            "2026-06-20T09:52:34.700Z",
+            "2026-06-21T10:15:34.700Z",
+            "2026-06-22T09:45:34.700Z",
+            "2026-06-23T09:40:34.700Z",
+            "2026-06-24T09:44:34.700Z",
+            "2026-06-28T09:51:34.700Z",
+            "2026-06-30T09:56:34.700Z"
+          ],
+          "skippedDaysCount": 6,
+          "icon": "brain"
+        }
+      ],
+      "goals": [
+        {
+          "id": "goal-react",
+          "title": "Learn React & TypeScript Core Architecture",
+          "description": "Build robust front-end web client dashboard panels",
+          "targetDate": "2026-07-16",
+          "progress": 40,
+          "status": "active"
+        },
+        {
+          "id": "goal-financial",
+          "title": "Consolidate Savings Budget Reserve",
+          "description": "Establish financial buffer target threshold",
+          "targetDate": "2026-08-15",
+          "progress": 60,
+          "status": "active"
+        }
+      ],
+      "expenses": [
+        {
+          "id": "exp-1782919039701",
+          "amount": 40.41,
+          "category": "transportation",
+          "note": "Metropolis Transport billing",
+          "date": "2026-06-16",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919044701",
+          "amount": 65.57,
+          "category": "transportation",
+          "note": "Metropolis Transport billing",
+          "date": "2026-06-17",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919049701",
+          "amount": 15.71,
+          "category": "shopping",
+          "note": "Stark Tech Store billing",
+          "date": "2026-06-18",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919054701",
+          "amount": 42.31,
+          "category": "food",
+          "note": "Cortex Cafe billing",
+          "date": "2026-06-19",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919059701",
+          "amount": 47.27,
+          "category": "shopping",
+          "note": "Stark Tech Store billing",
+          "date": "2026-06-20",
+          "isImpulsive": true,
+          "explanation": "Felt an immediate requirement to upgrade components."
+        },
+        {
+          "id": "exp-1782919064701",
+          "amount": 33.69,
+          "category": "transportation",
+          "note": "Metropolis Transport billing",
+          "date": "2026-06-21",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919069701",
+          "amount": 26.26,
+          "category": "food",
+          "note": "Butler Catering billing",
+          "date": "2026-06-22",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919074701",
+          "amount": 69.13,
+          "category": "food",
+          "note": "Butler Catering billing",
+          "date": "2026-06-23",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919079701",
+          "amount": 34.03,
+          "category": "food",
+          "note": "Butler Catering billing",
+          "date": "2026-06-24",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919084701",
+          "amount": 37.99,
+          "category": "shopping",
+          "note": "Stark Tech Store billing",
+          "date": "2026-06-25",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919089701",
+          "amount": 74.85,
+          "category": "food",
+          "note": "Cortex Cafe billing",
+          "date": "2026-06-26",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919094701",
+          "amount": 53.63,
+          "category": "food",
+          "note": "Cortex Cafe billing",
+          "date": "2026-06-27",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919099701",
+          "amount": 39.89,
+          "category": "shopping",
+          "note": "Stark Tech Store billing",
+          "date": "2026-06-28",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919104701",
+          "amount": 47.8,
+          "category": "shopping",
+          "note": "Stark Tech Store billing",
+          "date": "2026-06-29",
+          "isImpulsive": true,
+          "explanation": "Felt an immediate requirement to upgrade components."
+        },
+        {
+          "id": "exp-1782919109701",
+          "amount": 32.95,
+          "category": "transportation",
+          "note": "Metropolis Transport billing",
+          "date": "2026-06-30",
+          "isImpulsive": false,
+          "explanation": ""
+        },
+        {
+          "id": "exp-1782919114701",
+          "amount": 25.73,
+          "category": "transportation",
+          "note": "Metropolis Transport billing",
+          "date": "2026-07-01",
+          "isImpulsive": false,
+          "explanation": ""
+        }
+      ],
+      "budgets": [
+        {
+          "category": "food",
+          "limit": 300
+        },
+        {
+          "category": "transportation",
+          "limit": 100
+        },
+        {
+          "category": "shopping",
+          "limit": 250
+        },
+        {
+          "category": "education",
+          "limit": 200
+        },
+        {
+          "category": "healthcare",
+          "limit": 100
+        },
+        {
+          "category": "entertainment",
+          "limit": 150
+        },
+        {
+          "category": "misc",
+          "limit": 100
+        }
+      ],
+      "chatHistory": [
+        {
+          "id": "chat-1",
+          "role": "assistant",
+          "content": "Welcome to LifeOS. I am fully configured and online. I am J.A.R.V.I.S — your cognitive life advisor.",
+          "timestamp": "2026-07-01T15:18:34.699Z",
+          "type": "chat"
+        }
+      ],
+      "notifications": [],
+      "focusSessions": [
+        {
+          "durationMinutes": 25,
+          "completedTasks": 1,
+          "distractions": 1,
+          "score": 83,
+          "timestamp": "2026-06-14T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 25,
+          "completedTasks": 1,
+          "distractions": 0,
+          "score": 98,
+          "timestamp": "2026-06-17T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 50,
+          "completedTasks": 1,
+          "distractions": 0,
+          "score": 89,
+          "timestamp": "2026-06-18T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 25,
+          "completedTasks": 0,
+          "distractions": 1,
+          "score": 96,
+          "timestamp": "2026-06-19T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 90,
+          "completedTasks": 0,
+          "distractions": 0,
+          "score": 84,
+          "timestamp": "2026-06-22T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 25,
+          "completedTasks": 0,
+          "distractions": 0,
+          "score": 77,
+          "timestamp": "2026-06-23T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 90,
+          "completedTasks": 0,
+          "distractions": 1,
+          "score": 98,
+          "timestamp": "2026-06-24T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 90,
+          "completedTasks": 1,
+          "distractions": 1,
+          "score": 96,
+          "timestamp": "2026-06-25T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 50,
+          "completedTasks": 0,
+          "distractions": 1,
+          "score": 81,
+          "timestamp": "2026-06-26T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 25,
+          "completedTasks": 1,
+          "distractions": 1,
+          "score": 93,
+          "timestamp": "2026-06-27T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 50,
+          "completedTasks": 2,
+          "distractions": 0,
+          "score": 88,
+          "timestamp": "2026-06-28T15:18:34.700Z"
+        },
+        {
+          "durationMinutes": 50,
+          "completedTasks": 2,
+          "distractions": 1,
+          "score": 95,
+          "timestamp": "2026-06-29T15:18:34.700Z"
+        }
+      ],
+      "sleepLogs": [
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 8.2,
+          "date": "2026-06-01"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.3,
+          "date": "2026-06-02"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.5,
+          "date": "2026-06-03"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.3,
+          "date": "2026-06-04"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.8,
+          "date": "2026-06-05"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.5,
+          "date": "2026-06-06"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 6.1,
+          "date": "2026-06-07"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 8,
+          "date": "2026-06-08"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 8.4,
+          "date": "2026-06-09"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 8.1,
+          "date": "2026-06-10"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.6,
+          "date": "2026-06-11"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.4,
+          "date": "2026-06-12"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 8.1,
+          "date": "2026-06-13"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 6.1,
+          "date": "2026-06-14"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 8.2,
+          "date": "2026-06-15"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.9,
+          "date": "2026-06-16"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 8,
+          "date": "2026-06-17"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.5,
+          "date": "2026-06-18"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 8.5,
+          "date": "2026-06-19"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.6,
+          "date": "2026-06-20"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 6.1,
+          "date": "2026-06-21"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.2,
+          "date": "2026-06-22"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.6,
+          "date": "2026-06-23"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.5,
+          "date": "2026-06-24"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.4,
+          "date": "2026-06-25"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.3,
+          "date": "2026-06-26"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.5,
+          "date": "2026-06-27"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 6.1,
+          "date": "2026-06-28"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 8.3,
+          "date": "2026-06-29"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 7.7,
+          "date": "2026-06-30"
+        },
+        {
+          "sleepTime": "23:00",
+          "wakeTime": "07:00",
+          "duration": 8.3,
+          "date": "2026-07-01"
+        }
+      ],
+      "moods": [
+        {
+          "id": "mood-1780327114700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-01T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1780413514700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-02T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1780499914700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-03T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1780586314700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-04T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1780672714700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-05T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1780759114700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-06T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1780845514700",
+          "mood": "stressed",
+          "note": "Feeling pre-week pressure or low energy.",
+          "createdAt": "2026-06-07T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1780931914700",
+          "mood": "happy",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-08T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781018314700",
+          "mood": "happy",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-09T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781104714700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-10T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781191114700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-11T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781277514700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-12T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781363914700",
+          "mood": "stressed",
+          "note": "Feeling pre-week pressure or low energy.",
+          "createdAt": "2026-06-13T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781450314700",
+          "mood": "stressed",
+          "note": "Feeling pre-week pressure or low energy.",
+          "createdAt": "2026-06-14T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781536714700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-15T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781623114700",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-16T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781709514701",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-17T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781795914701",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-18T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781882314701",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-19T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1781968714701",
+          "mood": "happy",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-20T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782055114701",
+          "mood": "stressed",
+          "note": "Feeling pre-week pressure or low energy.",
+          "createdAt": "2026-06-21T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782141514701",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-22T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782227914701",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-23T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782314314701",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-24T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782400714701",
+          "mood": "happy",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-25T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782487114701",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-26T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782573514701",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-27T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782659914701",
+          "mood": "stressed",
+          "note": "Feeling pre-week pressure or low energy.",
+          "createdAt": "2026-06-28T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782746314701",
+          "mood": "stressed",
+          "note": "Feeling pre-week pressure or low energy.",
+          "createdAt": "2026-06-29T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782832714701",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-06-30T15:18:34.700Z"
+        },
+        {
+          "id": "mood-1782919114701",
+          "mood": "good",
+          "note": "Productive day variables aligned.",
+          "createdAt": "2026-07-01T15:18:34.700Z"
+        }
+      ],
+      "aiMemory": [
+        {
+          "id": "mem-1",
+          "fact": "Exams start on July 10th",
+          "category": "exam",
+          "timestamp": "2026-06-17T15:18:34.701Z"
+        },
+        {
+          "id": "mem-2",
+          "fact": "User prefers 2-hour deep work focus sessions",
+          "category": "preference",
+          "timestamp": "2026-06-21T15:18:34.701Z"
+        },
+        {
+          "id": "mem-3",
+          "fact": "Usually skips exercise workout on Sunday morning",
+          "category": "constraint",
+          "timestamp": "2026-06-24T15:18:34.701Z"
+        },
+        {
+          "id": "mem-4",
+          "fact": "Workout is most effective before breakfast",
+          "category": "preference",
+          "timestamp": "2026-06-27T15:18:34.701Z"
+        }
+      ],
+      "recommendationsFeedback": [
+        {
+          "id": "feed-1",
+          "text": "Schedule Workout before breakfast",
+          "type": "habit_timing",
+          "status": "accepted",
+          "timestamp": "2026-06-17T15:18:34.701Z",
+          "baselineRateBefore": 55,
+          "targetMetricAfter": 76
+        },
+        {
+          "id": "feed-2",
+          "text": "Execute Meditation immediately prior to Exercise",
+          "type": "habit_correlation",
+          "status": "accepted",
+          "timestamp": "2026-06-21T15:18:34.701Z",
+          "baselineRateBefore": 62,
+          "targetMetricAfter": 80
+        },
+        {
+          "id": "feed-3",
+          "text": "Execute Reading at 8:30 PM",
+          "type": "habit_timing",
+          "status": "accepted",
+          "timestamp": "2026-06-23T15:18:34.701Z",
+          "baselineRateBefore": 68,
+          "targetMetricAfter": 92
+        },
+        {
+          "id": "feed-4",
+          "text": "Morning Workout session",
+          "type": "habit_timing",
+          "status": "ignored",
+          "timestamp": "2026-06-28T15:18:34.701Z",
+          "baselineRateBefore": 45
+        },
+        {
+          "id": "feed-5",
+          "text": "Morning Workout session",
+          "type": "habit_timing",
+          "status": "ignored",
+          "timestamp": "2026-06-30T15:18:34.701Z",
+          "baselineRateBefore": 45
+        }
+      ],
+      "monthlySnapshots": [
+        {
+          "month": "2026-04",
+          "habitConsistency": 79,
+          "taskCompletion": 76,
+          "avgSleep": 7,
+          "avgMood": 75,
+          "totalFocusHours": 15,
+          "budgetUtilization": 92
+        },
+        {
+          "month": "2026-05",
+          "habitConsistency": 81,
+          "taskCompletion": 78,
+          "avgSleep": 7.2,
+          "avgMood": 80,
+          "totalFocusHours": 24,
+          "budgetUtilization": 88
+        },
+        {
+          "month": "2026-06",
+          "habitConsistency": 89,
+          "taskCompletion": 85,
+          "avgSleep": 7.4,
+          "avgMood": 85,
+          "totalFocusHours": 32,
+          "budgetUtilization": 80
+        }
+      ],
+      "reflections": [],
+      "userPatterns": {
+        "taskCompletionByHour": {},
+        "mostProductiveDay": "Tuesday",
+        "mostSkippedHabit": "Exercise",
+        "avgTasksCompletedPerDay": 4.2,
+        "streakBreakDays": [
+          "Sunday"
+        ],
+        "spendingByCategory": {},
+        "focusSessionAvgMinutes": 47,
+        "goalProgressRate": 0.65
+      }
+    }
+  }
+}

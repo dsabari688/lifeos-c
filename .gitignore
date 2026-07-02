@@ -22,3 +22,12 @@ server/lifeos_db.json.tmp
 # Coverage reports
 coverage/
 server/coverage/
+# Runtime backups
+server/backup/
+
+# Temporary files
+*.tmp
+
+# Coverage reports
+coverage/
+server/coverage/

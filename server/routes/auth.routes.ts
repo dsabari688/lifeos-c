@@ -172,7 +172,7 @@ router.post(
 
       if (!db.users) db.users = [];
       db.users.push(newUser);
-      dbService.saveDatabaseState(db);
+      await dbService.saveDatabaseState(db);
 
       delete otpStore[email];
       delete otpStore[email + "_data"];

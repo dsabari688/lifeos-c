@@ -590,7 +590,7 @@ export default function App() {
                 expenses={osData.expenses || []}
                 budgets={osData.budgets || []}
                 token={token}
-                onAddExpense={addExpense}
+                onAddExpense={(data: any) => addExpense(data)}
                 onUpdateBudget={updateBudget}
                 onExplainExpense={explainExpense}
               />
@@ -609,13 +609,14 @@ export default function App() {
         onClose={() => setNotificationsOpen(false)}
         notifications={osData.notifications}
         onClearRead={clearNotifications}
+        user={osData.profile}
       />
 
       {/* Task Modal editing window */}
       <TaskModal
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
-        onSave={saveTask}
+        onSave={(task: any) => saveTask(task)}
         initialTask={editingTask || undefined}
       />
 

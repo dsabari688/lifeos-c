@@ -234,12 +234,12 @@ export class JSONRepository implements IRepository {
     };
   }
 
-  public saveUserData(userId: string, data: UserData): void {
+  public async saveUserData(userId: string, data: UserData): Promise<void> {
     if (!this.dbState) {
       this.initialize();
     }
     this.dbState!.userData[userId] = data;
-    this.write(this.dbState!);
+    await this.write(this.dbState!);
   }
 
   public async runBackup(): Promise<string> {

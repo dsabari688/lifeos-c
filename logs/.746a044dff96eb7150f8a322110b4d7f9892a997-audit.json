@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "D:\\lifeos-c\\logs\\.746a044dff96eb7150f8a322110b4d7f9892a997-audit.json",
+    "files": [
+        {
+            "date": 1782919114596,
+            "name": "D:\\lifeos-c\\logs\\info-2026-07-01.log",
+            "hash": "9740abfe8a6400797818854fc5a36632b192eea95958188c2e8874e2056df2ae"
+        }
+    ],
+    "hashType": "sha256"
+}

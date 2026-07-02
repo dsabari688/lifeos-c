@@ -5,9 +5,9 @@ import { SystemNotification } from "../types";
 interface NotificationDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  notifications: SystemNotification[];
+  notifications: any[];
   onClearRead: () => void;
-  userName?: string;
+  user?: { name: string };   // ← Add this
 }
 
 export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
@@ -15,9 +15,12 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   onClose,
   notifications,
   onClearRead,
-  userName = "Alex"
+  user
 }) => {
+  const userName = user?.name || "Sir";
+
   if (!isOpen) return null;
+  // ... rest of your code
 
   return (
     <>

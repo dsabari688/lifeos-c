@@ -82,39 +82,36 @@ router.post("/api/jarvis/chat", authenticateToken, aiRateLimiter, validateBody(c
   let responseConfidence = 100;
   let responseRisk = "low";
   let verificationIssues: string[] = [];
-
-  try {
-    // 2. Goal Tracking: Update sub-milestones based on completed tasks or conversational cues
+   try {
+    // 2. Goal Tracking: Update sub-milestones based on completed tasks
     await autoTrackGoalProgress(message, userData);
 
-    // 3. Execution Engine: Planning & Executing database tool mutations
-    const contextSummary = buildPiggyPrompt(message, userData, activeContext);
-    const execResult = await executeAgentGoal(message, contextSummary, userData);
+    // 3. Execution Engine: Planning & Executing database changes
+    // 🚦 We only build the prompt ONE time now!
+    const systemPrompt = buildPiggyPrompt(message, userData, activeContext);
+    
+    const execResult = await executeAgentGoal(message, systemPrompt, userData);
     toolUsageLogs = execResult.logs;
 
-    // Build fresh context summary after database changes (so the LLM gets the updated task/goal states)
-    const updatedContextSummary = buildPiggyPrompt(message, userData, activeContext);
-
-    // 4. Chat Reasoning Step (Generating response via cognitive assistant pipeline)
+    // 4. Chat Reasoning Step
     transitionWorkflowState(userData, "Thinking");
     const reasoningStart = Date.now();
-    const systemPrompt = buildPiggyPrompt(message, userData, activeContext);
 
     const thinkingResult = await runThinkingPipeline(
       message,
-      updatedContextSummary,
+      systemPrompt,         // Pass our single prompt here
       userData.chatHistory,
-      systemPrompt
+      systemPrompt          // Pass it here too!
     );
+
     let aiText = thinkingResult.reply;
     reasoningTime = Date.now() - reasoningStart;
-
     // 5. Verification & Confidence Engine
     transitionWorkflowState(userData, "Verifying");
     const verificationStart = Date.now();
 
-    const verifierRes = await verifyResponse(message, aiText, updatedContextSummary);
-    const confidenceRes = await scoreConfidence(message, aiText, updatedContextSummary);
+    const verifierRes = await verifyResponse(message, aiText, systemPrompt);
+    const confidenceRes = await scoreConfidence(message, aiText, systemPrompt);
     verificationTime = Date.now() - verificationStart;
 
     verificationIssues = verifierRes.valid ? [] : verifierRes.issues;
@@ -127,7 +124,7 @@ router.post("/api/jarvis/chat", authenticateToken, aiRateLimiter, validateBody(c
         systemPrompt,
         userData.chatHistory,
         message,
-        updatedContextSummary,
+        systemPrompt,
         userData,
         aiText,
         verificationIssues,
@@ -207,7 +204,7 @@ router.post("/api/jarvis/chat", authenticateToken, aiRateLimiter, validateBody(c
 
     // Save DB
     db.userData[req.user!.id] = userData;
-    dbService.saveDatabaseState(db);
+    await dbService.saveDatabaseState(db);
 
     res.json({
       success: true,
@@ -235,7 +232,7 @@ router.post("/api/jarvis/chat", authenticateToken, aiRateLimiter, validateBody(c
     userData.chatHistory.push(userMsg, assistantMsg);
     
     db.userData[req.user.id] = userData;
-    dbService.saveDatabaseState(db);
+    await dbService.saveDatabaseState(db);
     
     res.json({ success: true, reply: fallbackText, history: userData.chatHistory, simulated: true });
   }
@@ -517,7 +514,7 @@ Keep it strictly under 3 sentences. Do not use markdown format.`;
   });
 });
 
-router.post("/api/jarvis/trigger-nudge", authenticateToken, (req: any, res: any) => {
+router.post("/api/jarvis/trigger-nudge", authenticateToken, async (req: any, res: any) => {
   const db = dbService.getDatabaseState();
   const userData = dbService.getUserData(req.user.id);
 
@@ -556,7 +553,7 @@ router.post("/api/jarvis/trigger-nudge", authenticateToken, (req: any, res: any)
 
   if (nudgesGenerated > 0) {
     db.userData[req.user.id] = userData;
-    dbService.saveDatabaseState(db);
+    await dbService.saveDatabaseState(db);
   }
 
   res.json({
@@ -567,50 +564,46 @@ router.post("/api/jarvis/trigger-nudge", authenticateToken, (req: any, res: any)
 });
 
 // --- PIGGY AI ENDPOINTS ---
-router.get("/api/piggy/dashboard", authenticateToken, (req: any, res: any) => {
-  const cachedData = dbService.getCachedDashboard(req.user.id, () => {
-    const db = dbService.getDatabaseState();
-    const userData = dbService.getUserData(req.user.id);
+router.get("/api/piggy/dashboard", authenticateToken, async (req: any, res: any) => {
+  const db = dbService.getDatabaseState();
+  const userData = dbService.getUserData(req.user.id);
 
-    // Calculate dynamic outcomes for accepted recommendations
-    evaluateOutcomeMetrics(userData);
-    
-    db.userData[req.user.id] = userData;
-    dbService.saveDatabaseState(db);
+  // Calculate dynamic outcomes for accepted recommendations
+  evaluateOutcomeMetrics(userData);
+  
+  db.userData[req.user.id] = userData;
+  await dbService.saveDatabaseState(db);
 
-    const cockpit = synthesizeAIDashboard(userData);
+  const cockpit = synthesizeAIDashboard(userData);
 
-    const habitsData = userData.habits.map((h: any) => {
-      const patterns = calculateHabitPatterns(h, userData.sleepLogs || [], userData.moods || []);
-      const risk = calculateHabitRisk(h, userData.sleepLogs || [], userData.moods || [], userData);
-      return {
-        id: h.id,
-        name: h.name,
-        icon: h.icon,
-        streak: h.streak,
-        patterns,
-        risk
-      };
-    });
-
-    const correlations = calculateCorrelations(userData.habits || [], userData.sleepLogs || [], userData.focusSessions || [], userData.tasks || []);
-    const achievements = checkAchievements(userData.profile || {}, userData.habits || [], userData.focusSessions || [], userData.expenses || []);
-    const deadlines = detectUpcomingDeadlines(userData);
-
+  const habitsData = userData.habits.map((h: any) => {
+    const patterns = calculateHabitPatterns(h, userData.sleepLogs || [], userData.moods || []);
+    const risk = calculateHabitRisk(h, userData.sleepLogs || [], userData.moods || [], userData);
     return {
-      success: true,
-      cockpit,
-      habitsData,
-      correlations,
-      achievements,
-      aiMemory: userData.aiMemory || [],
-      recommendationsFeedback: userData.recommendationsFeedback || [],
-      monthlySnapshots: userData.monthlySnapshots || [],
-      deadlines
+      id: h.id,
+      name: h.name,
+      icon: h.icon,
+      streak: h.streak,
+      patterns,
+      risk
     };
   });
 
-  res.json(cachedData);
+  const correlations = calculateCorrelations(userData.habits || [], userData.sleepLogs || [], userData.focusSessions || [], userData.tasks || []);
+  const achievements = checkAchievements(userData.profile || {}, userData.habits || [], userData.focusSessions || [], userData.expenses || []);
+  const deadlines = detectUpcomingDeadlines(userData);
+
+  res.json({
+    success: true,
+    cockpit,
+    habitsData,
+    correlations,
+    achievements,
+    aiMemory: userData.aiMemory || [],
+    recommendationsFeedback: userData.recommendationsFeedback || [],
+    monthlySnapshots: userData.monthlySnapshots || [],
+    deadlines
+  });
 });
 
 router.get("/api/piggy/coaching", authenticateToken, (req: any, res: any) => {
@@ -723,12 +716,12 @@ Keep it extremely concise (under 4 sentences), starting with 'Today:' and using 
   userData.reflections.push(reflection);
   
   db.userData[req.user.id] = userData;
-  dbService.saveDatabaseState(db);
+  await dbService.saveDatabaseState(db);
 
   res.json({ success: true, reflection });
 });
 
-router.post("/api/piggy/memory", authenticateToken, (req: any, res: any) => {
+router.post("/api/piggy/memory", authenticateToken, async (req: any, res: any) => {
   const { fact, category } = req.body;
   if (!fact || !category) return res.status(400).json({ error: "Fact and category are required." });
 
@@ -746,12 +739,12 @@ router.post("/api/piggy/memory", authenticateToken, (req: any, res: any) => {
   userData.aiMemory.push(newFact);
   
   db.userData[req.user.id] = userData;
-  dbService.saveDatabaseState(db);
+  await dbService.saveDatabaseState(db);
   
   res.json({ success: true, fact: newFact });
 });
 
-router.delete("/api/piggy/memory/:id", authenticateToken, (req: any, res: any) => {
+router.delete("/api/piggy/memory/:id", authenticateToken, async (req: any, res: any) => {
   const db = dbService.getDatabaseState();
   const userData = dbService.getUserData(req.user.id);
   if (!userData.aiMemory) userData.aiMemory = [];
@@ -759,12 +752,12 @@ router.delete("/api/piggy/memory/:id", authenticateToken, (req: any, res: any) =
   userData.aiMemory = userData.aiMemory.filter((m: any) => m.id !== req.params.id);
   
   db.userData[req.user.id] = userData;
-  dbService.saveDatabaseState(db);
+  await dbService.saveDatabaseState(db);
   
   res.json({ success: true });
 });
 
-router.post("/api/piggy/feedback", authenticateToken, (req: any, res: any) => {
+router.post("/api/piggy/feedback", authenticateToken, async (req: any, res: any) => {
   const { text, type, status, habitId } = req.body;
   if (!text || !status) return res.status(400).json({ error: "Text and status are required." });
 
@@ -794,7 +787,7 @@ router.post("/api/piggy/feedback", authenticateToken, (req: any, res: any) => {
   userData.recommendationsFeedback.push(newFeedback);
   
   db.userData[req.user.id] = userData;
-  dbService.saveDatabaseState(db);
+  await dbService.saveDatabaseState(db);
   
   res.json({ success: true, feedback: newFeedback });
 });
@@ -805,7 +798,7 @@ router.post("/api/agent/autonomous-loop", authenticateToken, async (req: any, re
   const observation = await runAutonomousAgentLoop(userData);
   
   db.userData[req.user.id] = userData;
-  dbService.saveDatabaseState(db);
+  await dbService.saveDatabaseState(db);
   
   res.json({ success: true, observation });
 });

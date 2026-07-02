@@ -83,6 +83,19 @@ graph TD
 
 ---
 
+## 📋 Quality Roadmap
+
+Phased plan to a defensible **9.5+**: repo hygiene, audit (Phase 0), data integrity, architectural cleanup, security, testing, observability, and real-world validation.
+
+| Doc | Contents |
+|-----|----------|
+| **[docs/roadmap.md](docs/roadmap.md)** | Master overview + progress tracker |
+| **[docs/phases/](docs/phases/)** | One detailed checklist per phase (0–9 + repo hygiene) |
+
+Work phases **in order** — do not skip Phase 0 or Phase 1.
+
+---
+
 ## 🧪 Verification & Tests
 
 The codebase includes automated tests validating the integrity of memory repositories and self-verifying analytical loops.

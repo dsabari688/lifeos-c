@@ -26,7 +26,7 @@ function getOpenAI(): OpenAI {
 }
 
 // --- PROFILE AVATAR ---
-router.post("/api/profile/avatar", authenticateToken, secureImageUpload.single("avatar"), (req: AuthRequest, res: Response) => {
+router.post("/api/profile/avatar", authenticateToken, secureImageUpload.single("avatar"), async (req: AuthRequest, res: Response) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
   const avatarUrl = `/uploads/avatars/${req.file.filename}`;
   
@@ -34,8 +34,8 @@ router.post("/api/profile/avatar", authenticateToken, secureImageUpload.single("
   const user = db.users?.find((u: any) => u.id === req.user!.id);
   if (user) {
     user.avatarUrl = avatarUrl;
-    dbService.saveDatabaseState(db);
-    dbService.updateProfile(req.user!.id, { avatar: avatarUrl });
+    await dbService.saveDatabaseState(db);
+    await dbService.updateProfile(req.user!.id, { avatar: avatarUrl });
   }
   
   res.json({ avatarUrl });

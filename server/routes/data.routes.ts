@@ -29,9 +29,9 @@ router.get("/api/data", authenticateToken, (req: AuthRequest, res: Response) => 
   }
 });
 
-router.post("/api/profile", authenticateToken, (req: AuthRequest, res: Response) => {
+router.post("/api/profile", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const profile = dbService.updateProfile(req.user!.id, req.body);
+    const profile = await dbService.updateProfile(req.user!.id, req.body);
     res.json({ success: true, profile });
   } catch (error: any) {
     logger.error("POST /api/profile error:", error);
@@ -71,7 +71,7 @@ router.delete("/api/goals/:id", authenticateToken, (req: AuthRequest, res: Respo
 });
 
 // --- FOCUS SCORE SYSTEM ---
-router.post("/api/focus-score", authenticateToken, (req: AuthRequest, res: Response) => {
+router.post("/api/focus-score", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { durationMinutes = 25, completedTasks = 0, distractions = 0 } = req.body;
     const score = Math.min(100, Math.max(0, (durationMinutes * 2) + (completedTasks * 10) - distractions));
@@ -89,7 +89,7 @@ router.post("/api/focus-score", authenticateToken, (req: AuthRequest, res: Respo
     };
     userData.focusSessions.push(session);
     db.userData[req.user!.id] = userData;
-    dbService.saveDatabaseState(db);
+    await dbService.saveDatabaseState(db);
 
     res.json({ score, durationMinutes, createdAt: new Date() });
   } catch (error: any) {
@@ -119,9 +119,9 @@ router.post("/api/tasks", authenticateToken, validateBody(taskSchema), (req: Aut
   }
 });
 
-router.put("/api/tasks/:id", authenticateToken, validateBody(taskSchema.partial()), (req: AuthRequest, res: Response) => {
+router.put("/api/tasks/:id", authenticateToken, validateBody(taskSchema.partial()), async (req: AuthRequest, res: Response) => {
   try {
-    const { task, notification } = TaskService.updateTask(req.user!.id, req.params.id as string, req.body);
+    const { task, notification } = await TaskService.updateTask(req.user!.id, req.params.id as string, req.body);
     res.json({ success: true, task, notification });
   } catch (error: any) {
     logger.error("PUT /api/tasks error:", error);
@@ -150,9 +150,9 @@ router.post("/api/habits", authenticateToken, validateBody(habitSchema), (req: A
   }
 });
 
-router.post("/api/habits/:id/toggle", authenticateToken, (req: AuthRequest, res: Response) => {
+router.post("/api/habits/:id/toggle", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const { habit, notification } = HabitService.toggleHabit(req.user!.id, req.params.id as string, req.body);
+    const { habit, notification } = await HabitService.toggleHabit(req.user!.id, req.params.id as string, req.body);
     res.json({ success: true, habit, notification });
   } catch (error: any) {
     logger.error("POST /api/habits/toggle error:", error);
@@ -171,9 +171,9 @@ router.delete("/api/habits/:id", authenticateToken, (req: AuthRequest, res: Resp
 });
 
 // --- EXPENSES API ---
-router.post("/api/expenses", authenticateToken, validateBody(expenseSchema), (req: AuthRequest, res: Response) => {
+router.post("/api/expenses", authenticateToken, validateBody(expenseSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const result = ExpenseService.addExpense(req.user!.id, req.body);
+    const result = await ExpenseService.addExpense(req.user!.id, req.body);
     res.json({ success: true, ...result });
   } catch (error: any) {
     logger.error("POST /api/expenses error:", error);
@@ -181,9 +181,9 @@ router.post("/api/expenses", authenticateToken, validateBody(expenseSchema), (re
   }
 });
 
-router.post("/api/expenses/:id/explain", authenticateToken, (req: AuthRequest, res: Response) => {
+router.post("/api/expenses/:id/explain", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const expense = ExpenseService.explainExpense(req.user!.id, req.params.id as string, req.body.explanation);
+    const expense = await ExpenseService.explainExpense(req.user!.id, req.params.id as string, req.body.explanation);
     res.json({ success: true, expense });
   } catch (error: any) {
     logger.error("POST /api/expenses/explain error:", error);
@@ -203,9 +203,9 @@ router.post("/api/budgets", authenticateToken, validateBody(budgetSchema), (req:
 });
 
 // --- NOTIFICATIONS API ---
-router.post("/api/notifications/clear-unread", authenticateToken, (req: AuthRequest, res: Response) => {
+router.post("/api/notifications/clear-unread", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    dbService.clearUnreadNotifications(req.user!.id);
+    await dbService.clearUnreadNotifications(req.user!.id);
     res.json({ success: true });
   } catch (error: any) {
     logger.error("POST /api/notifications/clear-unread error:", error);
@@ -235,7 +235,7 @@ router.get("/api/sleep/today", authenticateToken, (req: AuthRequest, res: Respon
 });
 
 // --- BACKUP RESTORE API ---
-router.post("/api/data/import", authenticateToken, (req: AuthRequest, res: Response) => {
+router.post("/api/data/import", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const backupData = req.body;
     if (!backupData || typeof backupData !== "object") {
@@ -259,7 +259,7 @@ router.post("/api/data/import", authenticateToken, (req: AuthRequest, res: Respo
       chatHistory: backupData.chatHistory || []
     };
 
-    dbService.saveDatabaseState(db);
+    await dbService.saveDatabaseState(db);
     res.json({ success: true, message: "System state restored from backup parameters." });
   } catch (error: any) {
     logger.error("POST /api/data/import error:", error);

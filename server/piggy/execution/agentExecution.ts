@@ -280,7 +280,7 @@ Format strictly as JSON. Output only the JSON block.`;
 
       try {
         // Run the appropriate tool mutation directly on userData
-        actualResult = executeToolMutation(step.tool, step.args, userData);
+        actualResult = await executeToolWithGuard(step.tool, step.args, userData);
         
         // Evaluate the results
         evalResult = evaluateToolCall(step.tool, step.args, step.expectedResult, actualResult);
@@ -353,147 +353,7 @@ Format strictly as JSON. Output only the JSON block.`;
 /**
  * Mutates the database userData record in place based on the tool and arguments.
  */
-function executeToolMutation(tool: string, args: any, userData: any): any {
-  const timestamp = new Date().toISOString();
-  const todayDateStr = timestamp.split("T")[0];
 
-  switch (tool) {
-    case "createTask": {
-      const newTask = {
-        id: `task-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        title: args.title,
-        category: args.category || "personal",
-        date: args.date || todayDateStr,
-        status: args.status || "pending",
-        priority: args.priority || "medium",
-        time: args.time || "12:00",
-        rescheduledCount: 0
-      };
-      if (!userData.tasks) userData.tasks = [];
-      userData.tasks.push(newTask);
-      return newTask;
-    }
-
-    case "updateTaskStatus": {
-      if (!userData.tasks) return { success: false };
-      const task = userData.tasks.find((t: any) => 
-        t.title.toLowerCase() === args.title.toLowerCase()
-      );
-      if (task) {
-        task.status = args.status;
-        return task;
-      }
-      return { success: false, reason: "Task not found" };
-    }
-
-    case "deleteTask": {
-      if (!userData.tasks) return { deleted: false };
-      const initialLength = userData.tasks.length;
-      userData.tasks = userData.tasks.filter((t: any) => 
-        t.title.toLowerCase() !== args.title.toLowerCase()
-      );
-      return { deleted: userData.tasks.length < initialLength };
-    }
-
-    case "createGoal": {
-      const newGoal = {
-        id: `goal-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        title: args.title,
-        description: args.description || "",
-        targetDate: args.targetDate || "",
-        progress: 0,
-        status: "active"
-      };
-      if (!userData.goals) userData.goals = [];
-      userData.goals.push(newGoal);
-      return newGoal;
-    }
-
-    case "updateGoalProgress": {
-      if (!userData.goals) return { success: false };
-      const goal = userData.goals.find((g: any) => 
-        g.title.toLowerCase() === args.title.toLowerCase()
-      );
-      if (goal) {
-        goal.progress = args.progress;
-        if (args.progress >= 100) {
-          goal.status = "completed";
-        }
-        return goal;
-      }
-      return { success: false, reason: "Goal not found" };
-    }
-
-    case "createHabit": {
-      const newHabit = {
-        id: `habit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        name: args.name,
-        frequency: args.frequency || "daily",
-        streak: 0,
-        logs: [],
-        logTimes: [],
-        skippedDaysCount: 0,
-        icon: args.icon || "activity"
-      };
-      if (!userData.habits) userData.habits = [];
-      userData.habits.push(newHabit);
-      return newHabit;
-    }
-
-    case "logHabit": {
-      if (!userData.habits) return { logged: false };
-      const habit = userData.habits.find((h: any) => 
-        h.name.toLowerCase() === args.name.toLowerCase()
-      );
-      if (habit) {
-        const dateStr = args.date || todayDateStr;
-        if (!habit.logs.includes(dateStr)) {
-          habit.logs.push(dateStr);
-          habit.logTimes.push(timestamp);
-          habit.streak += 1;
-          return { logged: true, habit };
-        }
-        return { logged: true, habit, note: "Already logged" };
-      }
-      return { logged: false, reason: "Habit not found" };
-    }
-
-    case "addExpense": {
-      const newExpense = {
-        id: `expense-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        description: args.description,
-        amount: parseFloat(args.amount) || 0,
-        category: args.category || "general",
-        date: args.date || todayDateStr
-      };
-      if (!userData.expenses) userData.expenses = [];
-      userData.expenses.push(newExpense);
-      return newExpense;
-    }
-
-    case "updateBudget": {
-      if (!userData.budgets) userData.budgets = [];
-      const existing = userData.budgets.find((b: any) => 
-        b.category.toLowerCase() === args.category.toLowerCase()
-      );
-      if (existing) {
-        existing.limit = parseFloat(args.limit);
-        return existing;
-      } else {
-        const newBudget = {
-          id: `budget-${Date.now()}`,
-          category: args.category,
-          limit: parseFloat(args.limit)
-        };
-        userData.budgets.push(newBudget);
-        return newBudget;
-      }
-    }
-
-    default:
-      throw new Error(`Unsupported tool command: ${tool}`);
-  }
-}
 
 // --- Consolidated from piggyToolExecutor.ts ---
 
